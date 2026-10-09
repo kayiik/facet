@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "facet": {
+      "type": "local",
+      "command": "facet",
+      "args": [
+        "mcp"
+      ],
+      "cwd": ".",
+      "tools": [
+        "*"
+      ]
+    }
+  }
+}

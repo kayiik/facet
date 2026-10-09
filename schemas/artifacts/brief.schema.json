@@ -1,0 +1,586 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/brief.schema.json",
+  "title": "Facet brief",
+  "description": "The client's request, understood: what the video is, for whom, where it plays, how long it runs and what the viewer takes away. The producer writes it at intake to artifacts/brief.json and restates it to the operator. Every answer is marked stated, inferred or unknown in answer_status; nothing the operator did not say is presented as their wish. Pipelines that go from intake straight to the script (most footage-led ones, avatar and localization) record the production plan a proposal would otherwise give in metadata.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "title",
+    "hook",
+    "key_points",
+    "tone",
+    "style",
+    "target_platform",
+    "target_duration_seconds"
+  ],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "title": {
+      "description": "Working title.",
+      "type": "string",
+      "minLength": 1
+    },
+    "hook": {
+      "description": "A working hook: the opening that makes the viewer stay.",
+      "type": "string"
+    },
+    "key_points": {
+      "description": "Concrete claims the video makes, not topics.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "core_message": {
+      "description": "One sentence the viewer remembers tomorrow.",
+      "type": "string"
+    },
+    "cta": {
+      "description": "Call to action: one specific thing the viewer does next.",
+      "type": "string"
+    },
+    "tone": {
+      "description": "What it should feel like, in the operator's own words where they reveal intent.",
+      "type": "string"
+    },
+    "style": {
+      "description": "Style direction: a style id (clean-professional, flat-motion-graphics, minimalist-diagram, premium-minimalist, anime-ghibli) or a description of the look wanted.",
+      "type": "string"
+    },
+    "target_audience": {
+      "description": "Who watches and what they already know.",
+      "type": "string"
+    },
+    "target_platform": {
+      "description": "Where the video plays. It sets the frame size and the length.",
+      "enum": ["youtube", "instagram", "tiktok", "linkedin", "generic"]
+    },
+    "target_duration_seconds": {
+      "description": "Target running time in seconds.",
+      "type": "number",
+      "minimum": 1
+    },
+    "reference_material": {
+      "description": "Paths or URLs of everything supplied: footage, audio, images, a script, a brand kit, a website or product, a music track, reference videos.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "purpose": {
+      "description": "The video's main job.",
+      "enum": ["teach", "sell", "inspire", "document", "entertain"]
+    },
+    "starts_from": {
+      "description": "What the video starts from.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["topic", "product", "website", "footage", "audio", "track", "reference", "script", "brief"]
+      }
+    },
+    "pipeline": {
+      "description": "The production method chosen at intake (pipelines_list, pipeline_describe).",
+      "$ref": "#/$defs/pipeline"
+    },
+    "stance": {
+      "description": "The producer stance, following the video's main job; the pipeline gives a default.",
+      "$ref": "#/$defs/stance"
+    },
+    "brand": {
+      "description": "Brand material the video must respect.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "colors": {
+          "description": "Brand colours as hex values.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fonts": {
+          "description": "Brand type families.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "logo": {
+          "description": "Path or URL of the logo.",
+          "type": "string"
+        },
+        "guidelines": {
+          "description": "Path or URL of the brand guidelines, or a short summary of them.",
+          "type": "string"
+        }
+      }
+    },
+    "constraints": {
+      "description": "Deadline, must-include, must-avoid, and whether paid steps are welcome.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deadline": {
+          "type": "string"
+        },
+        "must_include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "must_avoid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "paid_steps_welcome": {
+          "description": "Whether the operator accepts tools that charge their provider accounts. Leave it out and mark it unknown when they have not said.",
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "answer_status": {
+      "description": "How each answer was obtained. Keys are the seven intake questions (purpose, audience, platform, tone, references, outcome, constraints) or a field of this record; values are stated (the operator said it), inferred (you assumed it, for example a platform default, and said so) or unknown (still open).",
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "enum": ["stated", "inferred", "unknown"]
+      }
+    },
+    "angle_options": {
+      "description": "Early angles, when the operator wants to choose a direction before research. The proposal's concepts replace them.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "description"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "selected_angle": {
+      "description": "The name of the angle the operator chose.",
+      "type": "string"
+    },
+    "metadata": {
+      "description": "Free-form notes. Pipelines without research and proposal stages record here the plan a proposal would otherwise give, under production_plan, paid_steps and approval. Present that plan, stop, and record the operator's answer in approval. Other keys are allowed.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "production_plan": {
+          "$ref": "#/$defs/plan"
+        },
+        "paid_steps": {
+          "description": "Every step that calls a paid tool; empty when the plan uses none.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/paid_step"
+          }
+        },
+        "approval": {
+          "$ref": "#/$defs/approval"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "pipeline": {
+      "enum": [
+        "animated-explainer",
+        "animation",
+        "avatar-spokesperson",
+        "character-animation",
+        "cinematic",
+        "clip-factory",
+        "documentary-montage",
+        "hybrid",
+        "localization-dub",
+        "podcast-repurpose",
+        "screen-demo",
+        "talking-head"
+      ]
+    },
+    "stance": {
+      "enum": ["explainer", "product", "cinematic", "editorial", "animation"]
+    },
+    "plan": {
+      "description": "The production plan for a pipeline without a proposal stage. Same field names as production_plan in proposal_packet; the edit and compose stages read the locked settings from here.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "treatment_options": {
+          "description": "Two or three treatments when the material can go different ways, with your recommendation marked.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "description"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "description": "What the video becomes with this treatment, and what it uses from the material.",
+                "type": "string"
+              },
+              "recommended": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "selected_treatment": {
+          "description": "Id of the treatment the operator chose.",
+          "type": "string"
+        },
+        "outputs": {
+          "description": "The deliverables: how many, frame sizes, durations, platforms, languages.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/output"
+          }
+        },
+        "style": {
+          "description": "A style id, or custom when the look is designed for this piece.",
+          "enum": ["clean-professional", "flat-motion-graphics", "minimalist-diagram", "premium-minimalist", "anime-ghibli", "custom"]
+        },
+        "render_runtime": {
+          "description": "The engine, locked here: remotion, hyperframes or ffmpeg. Present both Remotion and HyperFrames when both are installed and usable for this pipeline.",
+          "enum": ["remotion", "hyperframes", "ffmpeg"]
+        },
+        "composition_mode": {
+          "description": "templated assembles the stock scene types into the stock compositions; atelier hand-authors a composition for this piece.",
+          "enum": ["templated", "atelier"]
+        },
+        "renderer_family": {
+          "description": "The creative grammar for templated work, from the pipeline's list.",
+          "$ref": "#/$defs/renderer_family"
+        },
+        "delivery_promise": {
+          "$ref": "#/$defs/delivery_promise"
+        },
+        "captions": {
+          "$ref": "#/$defs/captions_plan"
+        },
+        "voice": {
+          "$ref": "#/$defs/voice"
+        },
+        "music_plan": {
+          "$ref": "#/$defs/music_plan"
+        },
+        "unavailable": {
+          "$ref": "#/$defs/unavailable"
+        }
+      }
+    },
+    "output": {
+      "description": "One deliverable.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "What the deliverable is, for example clip-03-vertical or main-es.",
+          "type": "string"
+        },
+        "platform": {
+          "enum": ["youtube", "instagram", "tiktok", "linkedin", "generic"]
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 2,
+          "multipleOf": 2
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 2,
+          "multipleOf": 2
+        },
+        "duration_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "language": {
+          "description": "Language code, such as en or es.",
+          "type": "string"
+        }
+      }
+    },
+    "renderer_family": {
+      "enum": [
+        "explainer-data",
+        "explainer-teacher",
+        "product-reveal",
+        "screen-demo",
+        "animation-first",
+        "cinematic-trailer",
+        "documentary-montage",
+        "presenter"
+      ]
+    },
+    "delivery_promise": {
+      "description": "What kind of video is promised. It is checked before rendering, so a still slideshow cannot pass for a motion-led video. The edit carries it unchanged into edit_decisions.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promise_type", "motion_required"],
+      "properties": {
+        "promise_type": {
+          "description": "motion_led: real motion carries the video. source_led: the supplied footage leads. data_explainer: data and charts carry it. teacher_explainer: a step-by-step walk through a concept. screen_demo: software or a website shown working. avatar_presenter: a presenter speaking to camera. hybrid: supplied footage with designed or generated support. localization: an existing video in another language.",
+          "enum": [
+            "motion_led",
+            "source_led",
+            "data_explainer",
+            "teacher_explainer",
+            "screen_demo",
+            "avatar_presenter",
+            "hybrid",
+            "localization"
+          ]
+        },
+        "motion_required": {
+          "description": "True when the video depends on real motion (video clips, animation), not on camera moves over stills.",
+          "type": "boolean"
+        },
+        "source_required": {
+          "description": "True when the operator's supplied footage must lead.",
+          "type": "boolean"
+        },
+        "tone_mode": {
+          "description": "Tone of the delivery, such as cinematic, educational, corporate, playful, raw, intimate or epic.",
+          "type": "string"
+        },
+        "quality_floor": {
+          "description": "The lowest finish the operator accepts.",
+          "enum": ["draft", "presentable", "broadcast"]
+        },
+        "approved_fallback": {
+          "description": "A lesser form the operator agreed to if the promised one cannot be made: animatic or still_led. null (the default) when none was agreed.",
+          "enum": ["animatic", "still_led", null]
+        }
+      }
+    },
+    "captions_plan": {
+      "description": "How captions are delivered.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": {
+          "description": "composition: drawn word by word by the composition from the narration timing. burned: subtitle_gen cues burned in with ffmpeg_caption_burn. files: SRT or VTT files delivered beside the video only. none: no captions.",
+          "enum": ["composition", "burned", "files", "none"]
+        },
+        "languages": {
+          "description": "Caption languages, as language codes such as en or es.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "position": {
+          "enum": ["bottom", "center", "top"]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "voice": {
+      "description": "The narration voice.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool"],
+      "properties": {
+        "tool": {
+          "description": "edge_tts (free, needs the network), piper_tts (free, offline), openai_tts or elevenlabs_tts (paid); supplied for the operator's own recording or the speaker in the footage; none when the video has no narration.",
+          "enum": ["edge_tts", "piper_tts", "openai_tts", "elevenlabs_tts", "supplied", "none"]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "voice_id": {
+          "description": "The voice name or id the tool takes.",
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "rationale": {
+          "description": "Why this voice fits the brief.",
+          "type": "string"
+        },
+        "delivery_style": {
+          "description": "Plain-language direction, such as warm expert, expressive narrator or crisp tutorial.",
+          "type": "string"
+        },
+        "pacing_policy": {
+          "description": "How the voice uses pauses, speed and emphasis across the piece.",
+          "type": "string"
+        },
+        "sample_approval_required": {
+          "description": "True when a voice sample must be approved before the full narration.",
+          "type": "boolean"
+        }
+      }
+    },
+    "music_plan": {
+      "description": "Where the music comes from. Settle it whenever the video has sound.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type"],
+      "properties": {
+        "source_type": {
+          "description": "user_library: a track from the operator's library (music_library). bring_your_own: a track the operator will provide. none: no music.",
+          "enum": ["user_library", "bring_your_own", "none"]
+        },
+        "track_path": {
+          "description": "Path of the chosen track, when known.",
+          "type": "string"
+        },
+        "mood_direction": {
+          "description": "Mood, energy and texture wanted.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Where the music plays when not throughout, and anything else the mix must know.",
+          "type": "string"
+        }
+      }
+    },
+    "unavailable": {
+      "description": "Needs that a capability without a configured provider would serve, with the alternative offered.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability", "alternative"],
+        "properties": {
+          "capability": {
+            "enum": [
+              "voice",
+              "image_stock",
+              "image_generation",
+              "video_stock",
+              "video_generation",
+              "music",
+              "sfx",
+              "transcription",
+              "capture",
+              "avatar",
+              "composition",
+              "editing",
+              "audio",
+              "captions",
+              "analysis",
+              "review",
+              "studio_checks"
+            ]
+          },
+          "needed_for": {
+            "type": "string"
+          },
+          "alternative": {
+            "description": "The free or supplied alternative, or the question put to the operator.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "paid_step": {
+      "description": "One step that calls a tool which may charge the operator's provider account.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "provider", "model", "purpose", "credit_note", "sample_first"],
+      "properties": {
+        "tool": {
+          "enum": [
+            "elevenlabs_tts",
+            "flux_image",
+            "gflow_image",
+            "gflow_video",
+            "kling_video",
+            "openai_image",
+            "openai_tts",
+            "sora_video"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "description": "What the step makes and why it is worth paying for.",
+          "type": "string",
+          "minLength": 1
+        },
+        "credit_note": {
+          "description": "The tool's credit note as describe gives it, for example \"Uses your OpenAI API credits\".",
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_first": {
+          "description": "True when one sample is made and approved before the batch.",
+          "type": "boolean"
+        },
+        "quantity": {
+          "description": "How many calls the step makes, the sample included.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "free_alternative": {
+          "description": "The free way to cover the same need, and what it changes in the result.",
+          "type": "string"
+        }
+      }
+    },
+    "approval": {
+      "description": "The operator's answer at this approval point.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "description": "pending until the operator answers.",
+          "enum": ["pending", "approved", "approved_with_changes", "rejected"]
+        },
+        "user_notes": {
+          "description": "The operator's answer and any changes asked for, in their words.",
+          "type": "string"
+        },
+        "approved_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,309 @@
+name: animated-explainer
+title: Animated explainer
+summary: >-
+  A narrated explainer generated from a topic: researched, scripted, then
+  visualised with motion-graphics and data scenes, images and footage, with
+  music and word captions. A product teaser built from generated or supplied
+  product shots also runs here.
+category: generated
+starts_from: [topic, brief, script, product, reference]
+stance: explainer
+delivery_promises: [data_explainer, teacher_explainer, motion_led]
+renderer_families: [explainer-data, explainer-teacher, product-reveal]
+runtimes: [remotion, hyperframes, ffmpeg]
+modes: [templated, atelier]
+styles:
+  recommended: [clean-professional, flat-motion-graphics]
+  also: [minimalist-diagram, premium-minimalist]
+reference_input: true
+
+structures:
+  - id: hook-build-payoff
+    title: Hook, build, payoff
+    use_when: >-
+      The default explainer arc. The audience half-knows the subject and one
+      insight ("the aha") makes it click.
+    beats:
+      - id: hook
+        share: 0.08
+        purpose: Open on the surprising fact, question or contradiction, with visual interest in the first frame.
+        scenes: [hero_title, stat_card, image, video]
+      - id: setup
+        share: 0.15
+        purpose: Say why it matters and open the knowledge gap the video will close.
+        scenes: [text_card, callout, comparison, image]
+      - id: build
+        share: 0.45
+        purpose: Two or three steps joined by "but" and "therefore", one concept each, a new visual every few seconds.
+        scenes: [section_title, callout, comparison, line_chart, image, video]
+      - id: climax
+        share: 0.20
+        purpose: The insight lands on the most polished visual, followed by a short silence.
+        scenes: [stat_reveal, comparison, image, video]
+      - id: landing
+        share: 0.12
+        purpose: The core message in one sentence and one specific call to action; nothing new.
+        scenes: [text_card, hero_title]
+  - id: misconception-first
+    title: Misconception first
+    use_when: >-
+      Research found a belief most of the audience holds that is wrong.
+      Stating the myth before refuting it teaches better than stating the answer.
+    beats:
+      - id: myth
+        share: 0.08
+        purpose: State the belief the audience holds, as they would put it.
+        scenes: [hero_title, text_card, image]
+      - id: tension
+        share: 0.14
+        purpose: Show why the belief seems right, then the crack in it.
+        scenes: [comparison, callout, image]
+      - id: mechanism
+        share: 0.38
+        purpose: Build the real mechanism step by step, each step visible on screen as it is said.
+        scenes: [section_title, callout, image, video, line_chart]
+      - id: proof
+        share: 0.22
+        purpose: One concrete case or data set that proves it.
+        scenes: [stat_card, bar_chart, comparison, video]
+      - id: reframe
+        share: 0.18
+        purpose: Call back to the opening belief, say what to think now, and close with the call to action.
+        scenes: [stat_reveal, text_card]
+  - id: data-narrative
+    title: Data narrative
+    use_when: >-
+      Research produced strong, sourced numbers with a surprising pattern; the
+      story is told through the data.
+    beats:
+      - id: hook
+        share: 0.08
+        purpose: The single most surprising number, big and alone.
+        scenes: [stat_card, stat_reveal]
+      - id: context
+        share: 0.15
+        purpose: What the number measures and why the viewer should care.
+        scenes: [kpi_grid, callout, image]
+      - id: evidence
+        share: 0.42
+        purpose: The breakdown, the trend and the comparison that explain it; one chart idea per scene.
+        scenes: [bar_chart, line_chart, pie_chart, comparison, progress_bar]
+      - id: turn
+        share: 0.20
+        purpose: The insight the numbers reveal that the audience did not expect.
+        scenes: [stat_reveal, comparison, callout]
+      - id: landing
+        share: 0.15
+        purpose: What it means for the viewer and the one thing to do next.
+        scenes: [text_card, kpi_grid]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief]
+    approval: false
+    needs: []
+    review_focus:
+      - Purpose, audience, platform, length and tone are stated or marked as assumed
+      - What the audience must understand by the end is one sentence (the core message)
+      - Supplied material, brand and references are listed
+    success:
+      - brief written and restated to the operator in two or three sentences
+      - Unanswered questions are marked unknown, not invented
+    notes: |
+      An explainer is judged on what the viewer understands afterwards. Write that outcome as the
+      brief's core message before anything else. For a product teaser, also ask what the product
+      must visibly do and what the operator can supply (shots, screenshots, brand kit).
+
+  - id: research
+    role: researcher
+    consumes: [brief]
+    produces: [research_brief]
+    approval: false
+    needs: []
+    review_focus:
+      - Content landscape mapped with at least 3 existing pieces, what each covers and misses
+      - Data points are specific and sourced, not vague
+      - Audience questions and misconceptions come from real forums, not invented
+      - At least 3 genuinely different angles, each grounded in named findings
+    success:
+      - research_brief with at least 3 sourced data points (target 5 to 8)
+      - At least 3 angles, each listing the findings it is grounded in
+      - At least 5 sources with URLs, at least 2 of them primary
+    notes: |
+      Record how the best educators visualise this concept (two or three visual references and what
+      works in each); the scene plan builds on them. Misconceptions found here feed the
+      misconception-first structure, and surprising numbers feed the data-narrative structure. If the
+      topic is data-poor, say so: the concepts should lean on analogy or story.
+
+  - id: proposal
+    role: director
+    consumes: [brief, research_brief]
+    produces: [proposal_packet, review]
+    approval: true
+    needs: [voice, image_stock, image_generation, video_stock, video_generation, music, composition]
+    review_focus:
+      - Concepts differ in structure, hook and audience, not only in title
+      - Each concept is grounded in specific research findings
+      - The plan uses only configured providers and names the free path
+      - Paid steps list tool, provider, model and credit note
+      - Both runtimes were presented when both are installed; runtime and composition mode are locked
+      - Delivery promise, renderer family, voice and music plan are explicit
+      - Reference-driven work keeps one element of the reference and changes at least one
+    success:
+      - proposal_packet with at least 3 concepts and a selected concept with its rationale
+      - Production plan records style, render_runtime, composition_mode, renderer_family, delivery_promise, voice and music
+      - The operator approved the concept and the plan
+    notes: |
+      - Design for motion, not stills. When Remotion is available, text, number and data beats are
+        Explainer scenes (`stat_card`, `bar_chart`, `line_chart`, `pie_chart`, `kpi_grid`, `comparison`,
+        `callout`, `progress_bar`), not generated images: cheaper, sharper and animated.
+      - Family: `explainer-data` when the story runs on numbers and charts; `explainer-teacher` for a
+        step-by-step concept walk-through (classroom tone, slower pace); `product-reveal` for a product
+        teaser built from generated or supplied product shots.
+      - The free version always exists: an Edge or Piper voice, stock images and footage, Explainer
+        scenes rendered by Remotion, music from the operator's library.
+      - Reference-driven: after the concept is approved, make a 10 to 15 second sample (the hook and one
+        middle scene, with the real voice, style and music) before the script.
+
+  - id: script
+    role: writer
+    consumes: [brief, proposal_packet, research_brief]
+    produces: [script, review]
+    approval: true
+    needs: [studio_checks]
+    review_focus:
+      - Word count within 10% of the target at the planned pace
+      - The hook lands in the first five seconds and the climax pays it off
+      - Sections join with "but" and "therefore", never "and then"
+      - Every factual claim traces to the research_brief
+      - At least one visual cue every 8 to 10 seconds
+      - Voice performance plan with concrete pace, pauses, emphasis and a sample section
+    success:
+      - script with timed sections, delivery cues and visual cues
+      - script_check reports the word count within 10% and section shares near the structure's beats
+      - The operator approved the script
+    notes: |
+      - Arc: hook (0 to 5 s), setup (to about 15 s), build, climax (the insight), landing (the last
+        5 s, no new information). Map each key point of the selected concept to one build section.
+      - Use the surprising data points as retention anchors; one or two expert quotes at most.
+      - At most one new concept every 30 to 45 seconds; leave 1 to 3 seconds of silence after the key
+        insight (a pause in the narration lines).
+      - Add pronunciation guides for technical terms, acronyms and names.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, proposal_packet]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, image_stock, image_generation, video_stock, video_generation]
+    review_focus:
+      - The whole narration is covered with no gaps or overlaps
+      - No three scenes of the same type in a row; at least three types overall
+      - Every required asset can be made with configured providers or is supplied
+      - Style followed for palette, type, transitions and pacing
+      - Exact text (titles, numbers, names, call to action) is a text scene, never a generated image
+    success:
+      - scene_plan covers the script end to end, each scene linked to its script section
+      - plan_check reports full coverage, no variety violations, slideshow risk not failing and the delivery promise kept
+      - The operator approved the scene plan
+    notes: |
+      - One to three scenes per script section. Alternate high-information scenes (charts, diagrams,
+        animation) with breathing room (a text card, an image).
+      - Holds: `hero_title` 3 to 5 s; `stat_card`, `comparison`, `callout`, `progress_bar` 4 to 6 s;
+        charts and `kpi_grid` 5 to 7 s; `text_card` 3 to 5 s; images 3 to 6 s.
+      - Techniques that work: diagram reveal (build it piece by piece as it is named), analogy split
+        (concept beside its real-world analogy), stat punch, data sequence (`kpi_grid` then
+        `bar_chart`, `line_chart`, `pie_chart`), before and after (`comparison`), timeline, zoom into a
+        component, code walkthrough (`terminal_scene`).
+      - A zero-key plan made only of Explainer scenes renders with no provider at all.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script, proposal_packet]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [voice, image_stock, image_generation, video_stock, video_generation, music]
+    review_focus:
+      - Every file exists and is recorded with its source, provider and licence or prompt
+      - Narration covers every script section and follows the voice performance plan
+      - Samples (voice, image, music) were approved before any batch
+      - Images look like one video; palette and style anchors held
+    success:
+      - asset_manifest lists every asset with path, scene and tool, and all paths resolve
+      - narration_timing written with line and word timings
+    notes: |
+      - Sample first: the narration of the most demanding section, one image of the most
+        representative scene, and the music. Batch only after approval; after three rejected samples,
+        stop and ask how to change direction.
+      - Before generating a real place, person or object, check what it actually looks like.
+      - Do not generate images for text scenes; the composition renders them.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks]
+    review_focus:
+      - Every cut references an asset in the manifest or is an Explainer scene
+      - Cuts follow the narration timing; no gaps or overlaps
+      - Captions configured from the narration timing; music ducked under narration
+      - Runtime, mode, family and delivery promise carried unchanged from the proposal
+    success:
+      - edit_decisions covers the full duration
+      - plan_check passes coverage and delivery promise on the cut
+    notes: |
+      Captions are part of every explainer. Vary transitions within the style's set and keep the
+      special ones for topic shifts.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, audio, captions]
+    review_focus:
+      - Output exists and plays
+      - Duration within 5% of the target
+      - The runtime used is the runtime locked at the proposal
+      - HyperFrames work passes lint and validate before the render
+    success:
+      - render_report with the output path, profile and duration
+    notes: |
+      Remotion renders the narration, the ducked music and the word captions in one pass. FFmpeg is a
+      still-image fallback (pan-and-zoom over images): it changes the deliverable, so present it as a
+      downgrade and ask before using it.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief, proposal_packet]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Profile, duration and audio as expected
+      - No blank or frozen frames; text sharp and readable
+      - Narration and captions cover the video; loudness on target
+      - The contact sheet shows motion graphics, not a slideshow
+      - Every number and claim on screen matches the research_brief
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, proposal_packet]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis]
+    review_focus:
+      - Title, description with chapters, and a thumbnail frame
+      - Sources, licences, providers and paid calls listed
+      - Known limits stated
+    success:
+      - publish_log records the delivery package and its metadata
+      - The operator accepted the delivery
+    notes: |
+      Chapters come from the script sections. Cite the research sources in the description. The
+      thumbnail shows the core concept with three to five words of the hook at high contrast.

@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/publish_log.schema.json",
+  "title": "Facet publish log",
+  "description": "The delivery package and an honest account of how it was made, written by the producer at publish to artifacts/publish_log.json: one entry per deliverable and platform, the credits for every downloaded item and the music, the voice and providers used, the paid calls made, and the known limits. Facet uploads nothing; posting is the operator's act, so entries are exported unless the operator reports a post.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "entries"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "entries": {
+      "description": "One entry per deliverable and platform.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["platform", "status", "timestamp"],
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "status": {
+            "description": "exported when the package is ready in renders/; published only when the operator reports the post.",
+            "enum": ["published", "exported", "failed", "draft", "pending_review"]
+          },
+          "variant": {
+            "description": "Which deliverable it is: platform, ratio, language or clip number.",
+            "type": "string"
+          },
+          "export_path": {
+            "description": "The video file delivered.",
+            "type": "string"
+          },
+          "thumbnail_path": {
+            "description": "The thumbnail or poster frame.",
+            "type": "string"
+          },
+          "caption_files": {
+            "description": "SRT or VTT files for platforms that take them, even when captions are burned in.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "description": "The post's URL, when the operator reports it.",
+            "type": "string"
+          },
+          "video_id": {
+            "type": "string"
+          },
+          "visibility": {
+            "enum": ["public", "private", "unlisted"]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metadata_used": {
+            "description": "The text written for this platform.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "description": "Specific; under 60 characters for YouTube, leading with the hook or the number.",
+                "type": "string"
+              },
+              "description": {
+                "description": "The first 150 characters carry the hook and the value; then what is covered, chapters, sources and one call to action.",
+                "type": "string"
+              },
+              "tags": {
+                "description": "Five to ten specific tags.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hashtags": {
+                "description": "Three to five for social platforms.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "chapters": {
+                "description": "Chapters from the script sections' start times.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["start_seconds", "title"],
+                  "properties": {
+                    "start_seconds": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "posting_order": {
+      "description": "For a batch of clips, the suggested posting order, by variant or export path.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "credits": {
+      "description": "Every downloaded or library item with its licence, creator and source page, and the attribution line where the licence requires one. Built from asset_manifest.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "licence"],
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "title": {
+            "description": "The item credited: a clip, an image, the music track.",
+            "type": "string"
+          },
+          "creator": {
+            "type": "string"
+          },
+          "licence": {
+            "type": "string"
+          },
+          "licence_url": {
+            "type": "string"
+          },
+          "source_page": {
+            "type": "string"
+          },
+          "attribution": {
+            "description": "The credit line, where the licence requires one.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "voice": {
+      "description": "The voice used: tool and voice, or the operator's own recording.",
+      "type": "string"
+    },
+    "providers": {
+      "description": "Every provider the production used.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "paid_calls": {
+      "description": "Every paid call made. Empty when the production was fully free.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tool", "provider", "count"],
+        "properties": {
+          "tool": {
+            "enum": [
+              "elevenlabs_tts",
+              "flux_image",
+              "gflow_image",
+              "gflow_video",
+              "kling_video",
+              "openai_image",
+              "openai_tts",
+              "sora_video"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "count": {
+            "description": "How many calls, samples included.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "credit_note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "known_limits": {
+      "description": "Anything simplified, substituted with the operator's agreement, or left as a warning by the final review.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approval": {
+      "description": "Always asked: the operator accepts the delivery or asks for changes, which go back to the stage that can make them.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "description": "pending until the operator answers.",
+          "enum": ["pending", "approved", "approved_with_changes", "rejected"]
+        },
+        "user_notes": {
+          "description": "The operator's answer and any changes asked for, in their words.",
+          "type": "string"
+        },
+        "approved_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,323 @@
+name: animation
+title: Animation
+summary: >-
+  Designed motion is the medium: motion graphics, kinetic typography, data
+  visualisation, diagram builds and illustrated animation, authored in
+  HyperFrames or Remotion and carried by narration or music.
+category: animation
+starts_from: [topic, brief, script, product, track, reference]
+stance: animation
+delivery_promises: [motion_led, data_explainer, teacher_explainer]
+renderer_families: [animation-first, explainer-data]
+runtimes: [hyperframes, remotion]
+modes: [atelier, templated]
+styles:
+  recommended: [flat-motion-graphics, anime-ghibli]
+  also: [clean-professional, minimalist-diagram, premium-minimalist]
+reference_input: true
+
+structures:
+  - id: progressive-build
+    title: Progressive build
+    use_when: >-
+      A technical or layered idea. Start from the simplest picture and add one
+      layer per beat until the whole system is visible.
+    beats:
+      - id: hook
+        share: 0.08
+        purpose: A visual surprise or a question the animation promises to show.
+        scenes: [hero_title, stat_card, image]
+      - id: base
+        share: 0.17
+        purpose: The simplest building block, alone on screen, named once.
+        scenes: [callout, text_card, image]
+      - id: layers
+        share: 0.40
+        purpose: Add one layer of complexity per beat; each new element enters as it is named.
+        scenes: [comparison, callout, line_chart, progress_bar, image, video]
+      - id: transformation
+        share: 0.20
+        purpose: The whole system moves or morphs into its new state; the insight is seen, not told.
+        scenes: [stat_reveal, comparison, video]
+      - id: resolution
+        share: 0.15
+        purpose: Hold the final picture long enough to absorb, then land the message.
+        scenes: [text_card, hero_title]
+  - id: kinetic-promo
+    title: Kinetic promo
+    use_when: >-
+      A launch, product or brand piece carried by typography, logo motion and
+      music; short, rhythmic and cut on the beat.
+    beats:
+      - id: cold-open
+        share: 0.10
+        purpose: A typographic or visual slam on the first beat; no logo intro.
+        scenes: [hero_title, text_card]
+      - id: problem
+        share: 0.15
+        purpose: The tension the product resolves, in a few words on screen.
+        scenes: [text_card, comparison, image]
+      - id: reveal
+        share: 0.20
+        purpose: The product or idea appears; the signature motion lives here.
+        scenes: [hero_title, image, video]
+      - id: proof
+        share: 0.35
+        purpose: Three quick proof beats (features, numbers, outcomes), each landing on the music.
+        scenes: [stat_reveal, kpi_grid, callout, image, video]
+      - id: payoff
+        share: 0.12
+        purpose: The promise in one line.
+        scenes: [text_card, hero_title]
+      - id: end-card
+        share: 0.08
+        purpose: Name, logo and one call to action, held still.
+        scenes: [text_card]
+  - id: illustrated-story
+    title: Illustrated story
+    use_when: >-
+      A narrative or atmospheric piece built from illustrated stills brought to
+      life with camera moves, crossfades, particles and light.
+    beats:
+      - id: world
+        share: 0.15
+        purpose: Establish the world in a wide shot.
+        scenes: [anime_scene, hero_title]
+      - id: subject
+        share: 0.15
+        purpose: Bring in the subject or character close.
+        scenes: [anime_scene, image]
+      - id: journey
+        share: 0.35
+        purpose: The journey or explanation, alternating wide and close, warm and cool.
+        scenes: [anime_scene, image, video, section_title]
+      - id: turn
+        share: 0.20
+        purpose: The change, revealed through light, scale or colour.
+        scenes: [anime_scene, video]
+      - id: resolution
+        share: 0.15
+        purpose: The world after the change; the closing line.
+        scenes: [anime_scene, text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief]
+    approval: false
+    needs: []
+    review_focus:
+      - Purpose, audience, platform, length and tone are stated or marked as assumed
+      - The kind of animation is named
+      - Narration-led, text-led or music-led is decided
+    success:
+      - brief written and restated to the operator
+    notes: |
+      Name the kind of animation early: diagram build, motion graphics, kinetic typography, data
+      visualisation, illustrated, or mixed. Footage with a few overlays belongs in `hybrid`; a
+      character who acts belongs in `character-animation`.
+
+  - id: research
+    role: researcher
+    consumes: [brief]
+    produces: [research_brief]
+    approval: false
+    needs: []
+    review_focus:
+      - Content landscape mapped with at least 3 existing pieces
+      - Data points are specific and sourced, each rated for visual potential
+      - At least 2 animation technique references (target 4 to 6)
+      - At least 3 angles, each with the animation approach that suits it
+    success:
+      - research_brief with at least 3 sourced data points and 5 sources
+      - Technique references and accuracy notes recorded
+    notes: |
+      Research the topic and how to animate it. For each technique found: what it is (a progressive
+      diagram build, a morph between states, a particle field), where it was used, which approach it
+      needs (designed motion, data scenes, illustrated stills, generated clips, hand-authored SVG or
+      canvas) and its complexity (reusable, repeatable, bespoke). Rate each data point for visual
+      potential ("73% to 23%" animates; "it matters" does not). For math, science and technical
+      topics record the precise definition, the acceptable simplification and the metaphors that
+      mislead (electrons as tiny planets). A beautiful animation that teaches something wrong fails.
+
+  - id: proposal
+    role: director
+    consumes: [brief, research_brief]
+    produces: [proposal_packet, review]
+    approval: true
+    needs: [voice, image_stock, image_generation, video_generation, music, composition]
+    review_focus:
+      - Concepts differ in animation approach, structure and hook
+      - The approach is grounded in technique research and in what is configured
+      - Each concept has a reuse strategy (motifs, layout system, transition family, type hierarchy)
+      - At least one concept is fully free
+      - Narration-led, text-led or music-led is decided, and the voice cast if any
+      - Both runtimes were presented when both are installed; runtime and mode are locked
+    success:
+      - proposal_packet with at least 3 concepts and a selected concept with its approach and reuse strategy
+      - Production plan records style, render_runtime, composition_mode, renderer_family, delivery_promise, voice and music
+      - The operator approved the concept and the plan
+    notes: |
+      Present the animation approaches as real options, each with what it looks like, what it needs
+      and whether it is configured now:
+      - designed motion and data: Explainer scenes and kinetic type (Remotion), or HTML and GSAP
+        typography and graphics (HyperFrames); free;
+      - illustrated animation: two or three generated or supplied stills per scene with camera
+        moves, crossfades, particles and light (`anime_scene`); needs image generation or art;
+      - generated clips assembled as a story: the most cinematic and the least consistent; paid;
+      - hand-authored SVG, canvas or GSAP motion in an atelier composition: diagrams, maths, logos;
+        free, more authoring time;
+      - mixed: generated clips for one or two hero shots, designed motion for the rest.
+      Always offer one free approach. If the best approach needs a key the operator lacks, say so;
+      never design it in and fall back later. Hook patterns that suit animation: a visual surprise,
+      "you have been picturing it wrong", progressive reveal, an impossible camera, a number that
+      moves. Lean to HyperFrames for kinetic typography, logo and product motion, launch reels and
+      beat-timed music pieces; to Remotion for data scenes, illustrated stills and word captions.
+      The reuse strategy lives inside this piece only; nothing is carried over from earlier work.
+
+  - id: script
+    role: writer
+    consumes: [brief, proposal_packet, research_brief]
+    produces: [script, review]
+    approval: true
+    needs: [studio_checks]
+    review_focus:
+      - One clear visual idea per section
+      - On-screen text short; holds planned
+      - Word count within 10% of the target
+      - Narration-led sections have concrete delivery cues and a sample section
+      - Accuracy notes from the research respected
+    success:
+      - script with animation beats, timings and visual cues
+      - script_check passes word count and beat shares
+      - The operator approved the script
+    notes: |
+      - Write in animation beats, each one visual idea: statement (enters), demonstration (works),
+        transformation (morphs), comparison (side by side), conclusion (holds).
+      - On-screen titles at most 8 words, descriptions at most 15; phrases, numbers and labels.
+      - Plan 3 to 4 seconds of visual breathing room per 10 seconds of narration (90 s carries
+        about 60 to 65 s of narration). Entrances 0.5 to 1 s, reveals 1 to 2 s, holds 1 to 3 s,
+        exits 0.5 s.
+      - Use at least two sourced data points where research exists; never invent one.
+      - Captions transcribe the narration; on-screen text is designed content. Do not let them repeat
+        each other.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, proposal_packet]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, image_stock, image_generation, video_generation]
+    review_focus:
+      - Every scene says what appears first, what changes, what holds and how it exits
+      - The approach of each scene matches the proposal
+      - The reuse strategy is followed; a plan where every scene is unique is over-built
+      - Transitions are few and each carries a meaning
+      - Every scene has a feasible path
+    success:
+      - scene_plan covers the script with animation intent per scene
+      - plan_check passes coverage, variety and delivery promise
+      - The operator approved the scene plan
+    notes: |
+      - Plan like an animatic. Keep a small transition family (cut, fade, slide, transform) and
+        give each a meaning.
+      - Illustrated scenes (`anime_scene`): two or three stills from one visual system, 4 to 7 s each;
+        never the same camera move twice in a row; alternate warm and cool particles; mix wide and
+        close; `hero_title` and `section_title` overlays give structure.
+      - Designed and diagram scenes need subject and framing in detail; the camera is usually N/A.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script, proposal_packet]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [voice, image_stock, image_generation, video_generation, music]
+    review_focus:
+      - The production path is explicit for every scene
+      - Reusable motifs and type treatments are built once and reused
+      - Missing capabilities are reported, not hidden
+      - Narration follows the approved voice sample
+    success:
+      - asset_manifest lists every asset and all paths resolve
+      - narration_timing written when the piece is narrated
+    notes: |
+      - Deterministic first: designed motion and Explainer scenes before generation; supplied art
+        before new art.
+      - Illustrated work: write a visual system (palette, light, texture, mood) and adapt it per
+        scene; use neighbouring seeds for the two or three stills of a scene so the crossfade reads
+        as motion; test one image at full size before the batch.
+      - Narration is optional but the choice is explicit: narration-led, text-led or music-led.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks]
+    review_focus:
+      - Hold times and staggered reveals are preserved
+      - Motion serves hierarchy rather than decoration
+      - Timing is consistent across scenes
+      - Music ducked under narration
+    success:
+      - edit_decisions covers every planned beat
+      - plan_check passes coverage and delivery promise
+    notes: |
+      Timing is the product. Protect the hold after every reveal; bring in the primary element
+      first and supporting elements after it; motion only signals emphasis, transition,
+      transformation or contrast. Start the music where its energy fits the opening rather than on
+      a quiet intro, and loop it only when it is short.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, audio, captions]
+    review_focus:
+      - Text and lines stay sharp at the final resolution
+      - Motion timing survives the render
+      - The runtime used is the runtime locked at the proposal
+      - HyperFrames work passes lint and validate before the render
+    success:
+      - render_report with the output path, profile and duration
+    notes: |
+      Thin lines and small type are the first casualties of scaling and compression; render at the
+      delivery size and check them.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief, proposal_packet]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Text, symbols and diagram lines readable at the delivery size
+      - Holds, staggers and transitions as planned; nothing rushed
+      - Palette, motifs and type hierarchy consistent across scenes
+      - Technical content matches the research accuracy notes
+      - Atelier work passes the distinctness questions
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+    notes: |
+      In each mid-scene frame: the images are visible, particles and camera moves are evident,
+      overlays are clean, and the palette holds.
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, proposal_packet]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis]
+    review_focus:
+      - Packaging matches the kind of animation
+      - Thumbnail taken from the final visual language
+      - Sources, licences, providers and paid calls listed
+    success:
+      - publish_log records the delivery package and its metadata
+      - The operator accepted the delivery
+    notes: |
+      Package around the piece's strength: a diagram piece gets a structured, legible thumbnail; a
+      kinetic-type piece its strongest line; an illustrated piece its hero image.

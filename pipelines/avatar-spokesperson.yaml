@@ -1,0 +1,219 @@
+name: avatar-spokesperson
+title: Avatar spokesperson
+summary: >-
+  A digital presenter delivers a short scripted message (a spokesperson spot,
+  onboarding, an internal update, a sales intro) with restrained support
+  graphics and one clear call to action.
+category: avatar
+starts_from: [script, brief, product, topic]
+stance: explainer
+delivery_promises: [avatar_presenter]
+renderer_families: [presenter]
+runtimes: [remotion]
+modes: [templated]
+styles:
+  recommended: [clean-professional, flat-motion-graphics]
+  also: [premium-minimalist]
+reference_input: false
+
+structures:
+  - id: spokesperson-spot
+    title: Spokesperson spot
+    use_when: >-
+      One offer, one audience, one action: a product intro or sales message.
+    beats:
+      - id: hook
+        share: 0.12
+        purpose: The presenter opens on the viewer's problem or the news, in one sentence.
+        scenes: [video, text_card]
+      - id: value
+        share: 0.30
+        purpose: What the offer does for the viewer, said plainly.
+        scenes: [video, callout, image]
+      - id: proof
+        share: 0.38
+        purpose: One or two proof points on a side panel or lower third while the presenter speaks.
+        scenes: [video, stat_card, screenshot_scene, image]
+      - id: call-to-action
+        share: 0.20
+        purpose: The action, said once and held on a card.
+        scenes: [video, text_card]
+  - id: update-message
+    title: Update message
+    use_when: >-
+      Internal communication or onboarding: what is changing and what to do.
+    beats:
+      - id: headline
+        share: 0.15
+        purpose: Who is speaking and the headline of the update.
+        scenes: [video, text_card]
+      - id: change
+        share: 0.35
+        purpose: What is changing, one point per beat.
+        scenes: [video, callout, screenshot_scene]
+      - id: meaning
+        share: 0.30
+        purpose: What it means for the viewer.
+        scenes: [video, stat_card, callout]
+      - id: next-step
+        share: 0.20
+        purpose: The next step and where to find help.
+        scenes: [video, text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief]
+    approval: true
+    needs: [avatar, voice]
+    review_focus:
+      - The avatar path and the narration source are explicit
+      - Call to action and audience fit the spokesperson format
+      - Missing capabilities are surfaced before any script is written
+    success:
+      - brief records the avatar path (or the agreed pivot), narration source and outputs
+      - The operator approved the brief and the plan
+    notes: |
+      - Classify the avatar path honestly before polishing any copy: a platform avatar, a talking
+        head driven from a photo, or lip sync over a recorded presenter plate; and whether the
+        avatar already exists.
+      - The `avatar` capability may have no configured provider. Decide the pivot now, not at the
+        asset stage, and let the operator choose:
+        - narration over graphics: the script and call to action stay; the presenter is replaced by
+          full-frame visuals, text cards and a voice (closer to `animated-explainer`);
+        - the operator records themselves reading the script, and the work moves to `talking-head`;
+        - wait until an avatar provider is configured.
+        Never ship a half-working avatar.
+      - Message shape: one job (sales, onboarding, support, announcement), audience, call to action,
+        length and platforms. Narration source: supplied audio, a voice tool, or speech already in a
+        plate. Brand backgrounds, subtitles, language versions.
+      - Engine: Remotion renders `TalkingHead` with captions. HyperFrames is not used here; say so
+        when it is installed.
+
+  - id: script
+    role: writer
+    consumes: [brief]
+    produces: [script, review]
+    approval: true
+    needs: [studio_checks]
+    review_focus:
+      - The copy sounds spoken, concise and natural
+      - Scene breaks suit presenter delivery
+      - On-screen text is restrained
+    success:
+      - script with presenter beats, delivery cues and the call to action
+      - script_check passes word count at a spoken pace
+      - The operator approved the script
+    notes: |
+      Write for speech: short sentences, direct verbs, one idea per beat, explicit transitions; read
+      it aloud, and rewrite anything that sounds like a brochure. 140 to 160 words a minute. On-screen
+      text only for product names, short proof points, the call to action and required legal lines,
+      and never the sentence the presenter is saying. No jokes or improvised beats the avatar cannot
+      deliver.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, brief]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, avatar, image_stock]
+    review_focus:
+      - One coherent presenter layout and background system
+      - Support layers stay secondary to the presenter
+      - Frame-shape variants are realistic
+    success:
+      - scene_plan gives every scene a presenter treatment and a support layer
+      - The operator approved the scene plan
+    notes: |
+      - One presenter layout, reused: centred, beside a side panel, over lower thirds, or over a
+        branded background. One background family, at most two or three backgrounds, changed only at
+        real section changes.
+      - Per scene, the support layer is one of: none, subtitles only, lower third, product image,
+        side-panel proof point, call-to-action card. Captions stay clear of the face and mouth.
+      - Build the hero cut first; plan vertical or square versions only if the layout survives.
+      - Narration-over-graphics pivot: every scene needs a primary visual that carries the spoken
+        point, with more variety than a presenter cut needs; never a wall of text.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [avatar, voice, captions, image_stock, image_generation]
+    review_focus:
+      - The avatar path is explicit and honest, including a pivot
+      - Narration, subtitles and backgrounds are aligned
+      - Blocked paths are recorded, not hidden
+    success:
+      - asset_manifest lists the presenter video (or the pivot's visuals), narration, subtitles and cards
+      - All paths resolve
+    notes: |
+      Lock one avatar path. Sample the voice and a short avatar clip before any batch, announcing each
+      paid call with its credit note. Resolve the narration before any support graphics; with no voice
+      at all the project is blocked, not done. Keep the kit minimal: subtitles, one lower-third system,
+      a call-to-action card, backgrounds, a few product images.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing]
+    review_focus:
+      - The presenter stays visually primary
+      - Graphics and captions reinforce rather than crowd
+      - The call to action lands clearly
+    success:
+      - edit_decisions cover the planned deliverables
+    notes: |
+      Cut the presenter track first; graphics will not rescue a weak performance. Keep the pauses that
+      give emphasis: a presenter trimmed too tight feels robotic. Captions, side panels and lower
+      thirds never fight for the same space. The call to action lands once and holds.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, audio, captions]
+    review_focus:
+      - Mouth timing acceptable for the chosen path
+      - Subtitles and cards leave the face and mouth clear
+      - Audio clear and presenter-focused
+    success:
+      - render_report with the hero cut and any variants
+    notes: |
+      Render the hero cut first, then derivatives. On long lip-synced sections, spot-check for drift
+      and face artefacts before presenting.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - The presenter looks stable; no uncanny artefacts
+      - Speech clear; captions in time and off the face
+      - One clear call to action
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis, captions]
+    review_focus:
+      - Hero cut and derivatives clearly labelled
+      - Metadata matches the offer and audience
+      - Thumbnail or poster features the presenter cleanly
+    success:
+      - publish_log records the delivery package
+      - The operator accepted the delivery
+    notes: |
+      Label hero, vertical, square, language and review versions. Keep any known limit of the avatar
+      path (visible lip-sync risk) in the package notes.

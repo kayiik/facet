@@ -1,0 +1,236 @@
+name: clip-factory
+title: Clip factory
+summary: >-
+  One long recording (a webinar, stream, talk or interview) becomes a ranked
+  batch of short, self-contained clips, each hooked in its first seconds,
+  captioned and framed for its platform.
+category: repurpose
+starts_from: [footage, audio]
+stance: editorial
+delivery_promises: [source_led]
+renderer_families: [presenter]
+runtimes: [remotion, ffmpeg]
+modes: [templated]
+styles:
+  recommended: [clean-professional, flat-motion-graphics]
+  also: []
+reference_input: false
+
+structures:
+  - id: hook-point-payoff
+    title: Hook, point, payoff
+    use_when: >-
+      An insight or proof clip: one complete idea that lands in under a minute.
+    beats:
+      - id: hook
+        share: 0.12
+        purpose: The most arresting line or result, in the first two or three seconds, with hook text.
+        scenes: [video, text_card]
+      - id: context
+        share: 0.18
+        purpose: Only the context a cold viewer needs; no "as I said earlier".
+        scenes: [video, callout]
+      - id: point
+        share: 0.50
+        purpose: The idea itself, complete and in the speaker's words.
+        scenes: [video, stat_card, callout]
+      - id: payoff
+        share: 0.20
+        purpose: The line that lands it; cut right after it.
+        scenes: [video, text_card]
+  - id: story-moment
+    title: Story moment
+    use_when: >-
+      A narrative passage with its own shape: something happened, it turned.
+    beats:
+      - id: setup
+        share: 0.20
+        purpose: Where and who, in a sentence.
+        scenes: [video, text_card]
+      - id: tension
+        share: 0.35
+        purpose: What went wrong or what was at stake.
+        scenes: [video]
+      - id: turn
+        share: 0.30
+        purpose: The change or the realisation.
+        scenes: [video, callout]
+      - id: landing
+        share: 0.15
+        purpose: What it meant; end on the speaker, not on a card.
+        scenes: [video]
+  - id: hot-take
+    title: Hot take
+    use_when: >-
+      An opinion or disagreement that stands on its own.
+    beats:
+      - id: claim
+        share: 0.15
+        purpose: The claim, stated plainly, first.
+        scenes: [video, text_card]
+      - id: reasoning
+        share: 0.55
+        purpose: Why the speaker believes it, with the context that keeps it fair.
+        scenes: [video, stat_card, callout]
+      - id: punchline
+        share: 0.30
+        purpose: The sharpest line, then cut.
+        scenes: [video]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief, source_media_review]
+    approval: true
+    needs: [analysis, transcription]
+    review_focus:
+      - The source type is identified (webinar, stream, interview, panel, keynote)
+      - Clip count and platform mix are realistic for the source
+      - The selection criteria are defined before extraction
+      - Framing limits for vertical crops are acknowledged
+    success:
+      - brief records the clip target, platforms, families and ranking criteria
+      - The operator approved the brief and the plan
+    notes: |
+      - Name the source shape and the business goal (awareness, thought leadership, lead generation,
+        product education, event recap).
+      - Plan a mix of clip families: hook (a surprising claim or cold open), insight (a usable
+        takeaway), story (a moment with shape), proof (a number, a case, a demo result), opinion (a
+        hot take). A batch of one energy wears thin.
+      - Yield: 15 to 30 minutes of source gives 3 to 6 strong clips; 30 to 60 minutes, 5 to 10;
+        over an hour, 8 to 15 if the quality holds. A small strong batch beats a padded one.
+      - Frames: 9:16 when a face-first crop works, 1:1 when speaker and context both matter, 16:9
+        when slides, demos or several speakers need the width. If the framing will not survive a
+        vertical crop, say so now.
+      - Selection runs on the transcript. The `transcription` capability may be unavailable: ask for
+        a transcript or subtitle file before planning.
+      - Engine: Remotion (`TalkingHead`, word captions) or FFmpeg (cuts with burned subtitles).
+        HyperFrames is not used here; say so when it is installed.
+
+  - id: script
+    role: writer
+    consumes: [brief, source_media_review]
+    produces: [script, review]
+    approval: true
+    needs: [transcription]
+    review_focus:
+      - Candidate moments are ranked, not listed in source order
+      - Each selected clip makes sense to a cold viewer
+      - The batch covers the source instead of clustering in one section
+      - No clip changes what the speaker meant
+    success:
+      - script lists at least as many candidates as the target, each with source in and out, hook text, scores and reason
+      - The operator approved the selection
+    notes: |
+      - Score every candidate on hook, coherence, value, energy and platform fit; keep the scores.
+      - Standalone test: widen or reject clips with unresolved pronouns, references to earlier
+        context, long lead-ins, or an ending before the payoff.
+      - Choose the smallest set that meets the goal, varied across sections, speakers, families and
+        energy. The strongest clips, not the first ones found.
+      - Never join words into a claim the speaker did not make; keep the context each claim needs.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, brief]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, analysis]
+    review_focus:
+      - Each clip has clean in and out points; none starts or ends mid-sentence
+      - Each clip has a frame shape chosen for its platform
+      - Hook, subtitle and brand zones are fixed for the batch and never collide
+    success:
+      - scene_plan gives every clip its platform, frame shape, duration and first-frame plan
+      - The operator approved the clip plans
+    notes: |
+      Do not default every clip to 9:16. There is no face-tracking reframe yet: when a vertical crop
+      is weak, plan a safer frame rather than pretending it works. Decide frame one of each clip, where
+      the hook text sits, where subtitles live, and whether the speaker needs a punch-in. Fix one
+      layout for the batch: the same hook zone, subtitle zone, brand area and lower-third logic.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script]
+    produces: [asset_manifest]
+    approval: true
+    needs: [captions, audio]
+    review_focus:
+      - Every clip has subtitles timed from its own start
+      - One shared kit (subtitle style, hook text, lower third, brand frame)
+      - Loudness consistent across the batch
+    success:
+      - asset_manifest lists every clip's source range, subtitles and shared assets
+      - All paths resolve
+    notes: |
+      Build the shared kit once and show the hero clip's sample. Subtitles for each clip are timed
+      from the clip's start, not the source's: rebase every cue. Hook text is template-based, not
+      bespoke art. One loudness target for the whole batch.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing]
+    review_focus:
+      - Each clip edit is independent and self-contained
+      - The hook lands in the first two or three seconds
+      - Subtitle style consistent across clips
+    success:
+      - edit_decisions exist for every planned clip and variant
+    notes: |
+      Lock a batch template first (subtitle style, hook timing, lower-third timing, brand behaviour,
+      fade lengths), then override per clip only where needed. Open on motion, a face or the result;
+      hook text at once; subtitles from the first word. No cut mid-word, no silence after the point
+      lands, no outro card unless it earns its time, and never hook text, subtitles, brand and lower
+      third all at once.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest]
+    produces: [render_report]
+    approval: false
+    needs: [composition, editing, audio, captions]
+    review_focus:
+      - Every clip and variant rendered, or its failure reported
+      - Each meets its platform's frame size and duration
+      - Audio levels consistent across clips
+    success:
+      - render_report lists every output and any failed job
+    notes: |
+      One clip on three platforms is three renders; name each by clip number, platform and ratio. If
+      one fails, report it and finish the rest of the batch.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Each clip stands alone and keeps the speaker's meaning
+      - Hook within two or three seconds; no black first frame
+      - Captions synced and inside the platform's safe zone
+      - Style and loudness consistent across the batch
+    success:
+      - final_review covers every clip; passes, or passes with recorded warnings after two rounds
+      - Contact sheets and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [captions]
+    review_focus:
+      - Per-clip titles and copy written for each platform
+      - Clips numbered and ordered for posting
+      - Package organised by platform
+    success:
+      - publish_log records every clip with its platform, copy and posting order
+      - The operator accepted the delivery
+    notes: |
+      Order by rank, not chronology: the strongest, cleanest standalone hook goes first. Copy differs by
+      platform: TikTok and Reels direct and hook-led; Shorts searchable; LinkedIn insight-led; X short
+      and opinionated. Spread the batch over days; never one caption everywhere.

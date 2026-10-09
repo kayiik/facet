@@ -1,0 +1,48 @@
+{
+  "name": "@kayiik/facet",
+  "version": "0.0.1",
+  "description": "Agent-first video production tools and guidance for agentic CLIs",
+  "bin": {
+    "facet": "bin/facet-cli.js"
+  },
+  "files": [
+    "bin/facet-cli.js",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test:launchers": "node --test bin/launchers.test.js",
+    "test:installer": "node --test scripts/installer-selection.test.mjs",
+    "test:notices": "python -m unittest discover -s scripts -p test_generate_notices.py",
+    "doctor": "node bin/facet-cli.js doctor",
+    "check-pr": "release-harness check-pr",
+    "run-local": "release-harness run-local",
+    "clean": "release-harness clean"
+  },
+  "keywords": [
+    "video",
+    "video-production",
+    "agentic",
+    "ai",
+    "mcp",
+    "claude-code",
+    "opencode",
+    "copilot",
+    "codex",
+    "ffmpeg",
+    "remotion",
+    "edge-tts"
+  ],
+  "author": "Facet Contributors",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@xibodev/release-harness": "1.2.0",
+    "playwright": "1.63.0"
+  }
+}

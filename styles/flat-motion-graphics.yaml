@@ -1,0 +1,115 @@
+id: flat-motion-graphics
+
+identity:
+  name: Flat Motion Graphics
+  category: motion-graphics
+  mood: energetic, modern, bold
+  pace: fast
+  best_for: Social media explainers, TikTok and Reels, product launches, startup pitches
+
+visual_language:
+  color_palette:
+    primary: ["#7C3AED", "#4F46E5"]
+    accent: ["#EC4899", "#06B6D4"]
+    background: "#0F172A"
+    surface: "#1E293B"
+    text: "#F8FAFC"
+    muted: "#94A3B8"
+  composition: edge to edge, bold framing, off-centre for dynamism
+  texture: flat colour blocks and geometric shapes; gradients only on backgrounds
+
+typography:
+  headings:
+    font: Space Grotesk
+    weight: 700
+    tracking: "-0.03em"
+  body:
+    font: Space Grotesk
+    weight: 400
+    line_height: 1.5
+  code:
+    font: JetBrains Mono
+    weight: 400
+  stat_card:
+    font: Space Grotesk
+    weight: 700
+    size_multiplier: 4.0
+  scale_system: perfect_fourth
+  weight_matrix:
+    title: 700
+    heading: 700
+    body: 400
+    caption: 300
+
+motion:
+  transitions: [cut, wipe, slide]
+  camera_moves: [zoom-in, zoom-out, pan-left, pan-right, parallax]
+  animation_style: bouncy springs that overshoot, snappy
+  spring:
+    damping: 12
+    stiffness: 80
+    mass: 1
+  pacing_rules:
+    min_scene_hold_seconds: 1.5
+    max_scene_hold_seconds: 8
+    text_card_hold_seconds: 2.5
+    stat_card_hold_seconds: 2.0
+    transition_duration_seconds: 0.3
+  entrance: scale up with a bounce (0.8 to 1.05 to 1.0)
+  exit: scale down and fade
+
+audio:
+  voice_style: energetic, conversational, slightly fast, friendly to a young audience
+  music_mood: lo-fi beat, electronic, driving rhythm
+  music_volume: 0.12
+  sfx_style: punchy pops, whooshes, glitch sounds on key moments
+
+asset_generation:
+  image_prompt_prefix: "flat vector illustration, bold colours, geometric shapes, dark background, "
+  image_negative_prompt: photorealistic, watercolour, vintage, muted colours, white background
+  diagram_style: neon outlines on a dark background, rounded rectangles, glowing connections
+  consistency_anchors:
+    - "Purple (#7C3AED) as the primary accent throughout"
+    - "Dark slate (#0F172A) background in every scene"
+    - Bold, geometric illustration
+    - Bright neon accents for emphasis
+
+overlays:
+  stat_card:
+    bg: "#1E293B"
+    border: "#7C3AED"
+    radius: 12
+    shadow: "0 0 20px rgba(124,58,237,0.3)"
+  key_term:
+    bg: "#1C204F"
+    text: "#C4B5FD"
+    radius: 6
+  code_block:
+    bg: "#0F172A"
+    text: "#E2E8F0"
+    highlight: "#EC4899"
+  captions:
+    bg: "rgba(15, 23, 42, 0.75)"
+    text: "#F8FAFC"
+    highlight: "#22D3EE"
+
+quality_rules:
+  - Contrast at least 4.5:1 for all text
+  - At most 4 colours on screen; the dark background counts as one
+  - Text readable at 720p on a phone, so larger sizes than for desktop
+  - Every scene has at least one animated element
+  - A new visual element every 2 to 3 seconds
+  - When the project has sound effects, one on every major transition
+
+chart_palette:
+  - "#7C3AED"
+  - "#EC4899"
+  - "#06B6D4"
+  - "#F59E0B"
+  - "#10B981"
+  - "#EF4444"
+
+color_rules:
+  harmony_type: split-complementary
+  contrast_validation: true
+  colorblind_safe: true

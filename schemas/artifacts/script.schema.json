@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/script.schema.json",
+  "title": "Facet script",
+  "description": "The timed script, the backbone every scene, sound and caption follows. The writer writes it to artifacts/script.json, and script_check reads it: word count against the duration at the planned pace, when the hook lands, long lines, and each section's share against the chosen structure's beats. Narrated sections carry their narration as lines for the voice tool, whose narration_timing then drives the cuts and the captions. Every factual claim traces to the research_brief. Visual-led work (cinematic, montage, music-driven) writes a beat map: sections with little or no narration, carried by visual and sound cues. Footage-led work builds the sections from the transcript, each pointing to its source passage.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "title", "total_duration_seconds", "sections"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "title": {
+      "type": "string"
+    },
+    "total_duration_seconds": {
+      "description": "Target running time in seconds; it sets the word count.",
+      "type": "number",
+      "minimum": 1
+    },
+    "structure": {
+      "description": "The structure id chosen from the pipeline (pipeline_describe), such as hook-build-payoff.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "voice_performance": {
+      "description": "The voice performance plan the narration follows.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "performance_intent": {
+          "description": "What the read must achieve.",
+          "type": "string"
+        },
+        "pacing_profile": {
+          "enum": ["contemplative", "conversational", "energetic", "technical", "cinematic", "custom"]
+        },
+        "words_per_minute": {
+          "description": "The planned pace: about 150 conversational, 120 to 130 contemplative or technical, 180 to 200 energetic short-form.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "energy_curve": {
+          "description": "How the energy moves across the piece.",
+          "type": "string"
+        },
+        "pause_policy": {
+          "description": "Where and how long the voice pauses.",
+          "type": "string"
+        },
+        "sample_section_id": {
+          "description": "The most performance-sensitive section, used for the voice sample; not automatically the first.",
+          "type": "string"
+        },
+        "provider_notes": {
+          "description": "Notes for each voice tool, keyed by tool name.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sections": {
+      "description": "The sections in order, each mapped to one beat of the structure.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "start_seconds", "end_seconds"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "beat": {
+            "description": "The id of the structure beat this section plays.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$"
+          },
+          "text": {
+            "description": "The section's narration in full; empty for a beat with no narration.",
+            "type": "string"
+          },
+          "lines": {
+            "description": "The narration split into lines for the voice tool, in order: one sentence or phrase a line, short enough to caption (two lines of at most 42 characters). Ids are unique across the script (l1, l2 and so on); cuts follow them by id. The pause after a line is short after setup, longer before a reversal, one to three seconds after the key insight. Joined, the lines equal text.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "text"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pause_after_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "speaker_directions": {
+            "type": "string"
+          },
+          "delivery_cues": {
+            "description": "Concrete voice-performance cues the narration applies; at least two for each narrated section. \"Read naturally\" is not a direction.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pace": {
+                "enum": ["slow", "measured", "conversational", "brisk", "fast", "custom"]
+              },
+              "energy": {
+                "type": "string"
+              },
+              "emphasis_words": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "pause_before_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "pause_after_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "delivery_note": {
+                "type": "string"
+              },
+              "provider_text": {
+                "description": "Narration text ready for the voice tool, with purposeful punctuation, or SSML break tags where the voice supports them.",
+                "type": "string"
+              }
+            }
+          },
+          "enhancement_cues": {
+            "description": "Visual cues: at least one every 8 to 10 seconds in narrated work. Describe causes, not feelings (\"wide aerial pull-back, the figure silhouetted against the sunrise\", not \"epic reveal\").",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "description"],
+              "properties": {
+                "type": {
+                  "enum": ["overlay", "broll", "diagram", "stat_card", "code_snippet", "animation"]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "timestamp_seconds": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "on_screen_text": {
+            "description": "Sparse on-screen text for this beat, exactly as it should read.",
+            "type": "string"
+          },
+          "sound_cues": {
+            "description": "What the audience hears besides the narration: music changes, effects, silence (\"music drops out for 1.5 s, then returns at half tempo\").",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["description"],
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "timestamp_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "pronunciation_guides": {
+            "description": "Technical terms, acronyms and names, spelled as they are said.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["word", "phonetic"],
+              "properties": {
+                "word": {
+                  "type": "string"
+                },
+                "phonetic": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "source_ref": {
+            "description": "The research_brief data point or URL that supports this section's claims.",
+            "type": "string"
+          },
+          "source_passage": {
+            "description": "Footage-led work: the passage of the source this section uses, what is kept, what is cut and why. Keep the speaker's meaning and the context each statement needs.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "start_seconds", "end_seconds"],
+            "properties": {
+              "source": {
+                "description": "Path of the source file.",
+                "type": "string"
+              },
+              "start_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "kept": {
+                "type": "string"
+              },
+              "cut": {
+                "type": "string"
+              },
+              "why": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

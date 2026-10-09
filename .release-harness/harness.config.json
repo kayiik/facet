@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "product_slug": "facet",
+  "harness_version": "1.2.0",
+  "port_block": {
+    "start": 31000,
+    "range": 50
+  },
+  "timeouts": {
+    "health_check_seconds": 60,
+    "scenario_timeout_ms": 960000,
+    "run_timeout_seconds": 3000
+  },
+  "network_policy": {
+    "mode": "sealed",
+    "allowed_egress": []
+  }
+}

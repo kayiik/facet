@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facet Brand Kit Preview</title>
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--facet-canvas); color: var(--facet-ink); font: 16px/1.6 Inter, ui-sans-serif, system-ui, sans-serif; }
+    main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 4rem 0 5rem; }
+    h1, h2, p { margin-top: 0; }
+    h1, h2 { font-family: var(--facet-wordmark-font); line-height: 1.15; }
+    h1 { margin-bottom: .75rem; font-size: clamp(2.4rem, 8vw, 5rem); letter-spacing: -.04em; }
+    h2 { margin-bottom: 1rem; font-size: 1.35rem; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .intro { max-width: 68ch; color: var(--facet-slate); font-size: 1.05rem; }
+    .visual-wordmark { font-family: var(--facet-wordmark-font); font-weight: var(--facet-wordmark-weight); }
+    .period { color: var(--facet-red); }
+    .section { margin-top: 3.5rem; }
+    .showcase { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--facet-line); }
+    .panel { min-height: 260px; display: grid; place-items: center; padding: 2rem; background: var(--facet-white); }
+    .panel + .panel { border-left: 1px solid var(--facet-line); }
+    .panel.dark { background: var(--facet-ink); }
+    .panel img { display: block; max-width: min(100%, 420px); max-height: 190px; }
+    .panel img.mark { width: 180px; height: 180px; }
+    .asset-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--facet-line); }
+    .asset { min-height: 160px; display: grid; align-content: center; justify-items: center; gap: .85rem; padding: 1.25rem; background: var(--facet-white); border-right: 1px solid var(--facet-line); }
+    .asset:last-child { border-right: 0; }
+    .asset img { width: 88px; height: 88px; }
+    .asset.dark { background: var(--facet-ink); color: var(--facet-white); }
+    .asset code { font-size: .75rem; overflow-wrap: anywhere; text-align: center; }
+    .swatches { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--facet-line); }
+    .swatch { min-height: 150px; display: flex; flex-direction: column; justify-content: flex-end; padding: 1.2rem; color: var(--facet-ink); }
+    .swatch + .swatch { border-left: 1px solid #ffffff80; }
+    .swatch strong { font-family: var(--facet-wordmark-font); font-size: 1.15rem; }
+    .swatch.begonia { background: var(--facet-begonia); }
+    .swatch.green { background: var(--facet-green); }
+    .swatch.red { background: var(--facet-red); color: var(--facet-white); }
+    .og-preview { display: block; width: 100%; height: auto; border: 1px solid var(--facet-line); }
+    @media (max-width: 720px) {
+      main { padding-top: 2.5rem; }
+      .showcase { grid-template-columns: 1fr; }
+      .panel + .panel { border-left: 0; border-top: 1px solid var(--facet-line); }
+      .asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .asset { border-bottom: 1px solid var(--facet-line); }
+      .asset:nth-child(2) { border-right: 0; }
+      .asset:nth-child(n + 3) { border-bottom: 0; }
+      .swatches { grid-template-columns: 1fr; }
+      .swatch + .swatch { border-left: 0; border-top: 1px solid #ffffff80; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 aria-label="Facet"><span class="visual-wordmark" aria-hidden="true">facet<span class="period">.</span></span></h1>
+    <p class="intro">Precision Dovetail Assembly (Puzzle B), the approved Facet identity. This page previews the canonical logo, icon, color, and social assets without modifying them.</p>
+
+    <section class="section" aria-labelledby="lockups-heading">
+      <h2 id="lockups-heading">Primary lockups</h2>
+      <div class="showcase">
+        <div class="panel"><img src="logos/lockup.svg" alt="Facet"></div>
+        <div class="panel dark"><img src="logos/lockup-inverse.svg" alt="Facet"></div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="marks-heading">
+      <h2 id="marks-heading">Marks and monochrome variants</h2>
+      <div class="asset-grid">
+        <div class="asset"><img src="logos/mark.svg" alt="Facet full-color mark"><code>mark.svg</code></div>
+        <div class="asset dark"><img src="logos/mark-inverse.svg" alt="Facet full-color mark for dark backgrounds"><code>mark-inverse.svg</code></div>
+        <div class="asset"><img src="logos/mono-black.svg" alt="Facet black monochrome mark"><code>mono-black.svg</code></div>
+        <div class="asset dark"><img src="logos/mono-white.svg" alt="Facet white monochrome mark"><code>mono-white.svg</code></div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="colors-heading">
+      <h2 id="colors-heading">Signature colors</h2>
+      <div class="swatches">
+        <div class="swatch begonia"><strong>Begonia</strong><code>#F36C7A</code></div>
+        <div class="swatch green"><strong>Green</strong><code>#10B981</code></div>
+        <div class="swatch red"><strong>Red</strong><code>#D92D48</code></div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="og-heading">
+      <h2 id="og-heading">Default social image</h2>
+      <img class="og-preview" src="og/og-default.png" alt="Facet default social preview">
+    </section>
+  </main>
+</body>
+</html>

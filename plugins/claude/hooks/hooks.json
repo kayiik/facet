@@ -1,0 +1,17 @@
+{
+  "description": "Ask before every Facet tool that may charge, through MCP or the shell.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_facet_facet__elevenlabs_tts|mcp__plugin_facet_facet__flux_image|mcp__plugin_facet_facet__gflow_image|mcp__plugin_facet_facet__gflow_video|mcp__plugin_facet_facet__kling_video|mcp__plugin_facet_facet__openai_image|mcp__plugin_facet_facet__openai_tts|mcp__plugin_facet_facet__sora_video|mcp__facet__elevenlabs_tts|mcp__facet__flux_image|mcp__facet__gflow_image|mcp__facet__gflow_video|mcp__facet__kling_video|mcp__facet__openai_image|mcp__facet__openai_tts|mcp__facet__sora_video|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "facet hook claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,289 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+    branches: [staging]
+    paths:
+      - '.github/workflows/release.yml'
+      - 'install.ps1'
+      - 'install.sh'
+      - 'installer/**'
+      - 'scripts/package-release.py'
+      - 'scripts/generate-notices.py'
+      - 'scripts/test-prebuilt-install.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# Facet 2.x ships one native executable, `facet`, plus its guidance bundle.
+# Linux and macOS get a prebuilt archive. Windows builds facet on the user's
+# machine from the release's source archive, with the pinned official Go
+# toolchain; no Windows binary is published.
+jobs:
+  bootstrap:
+    uses: ./.github/workflows/bootstrap.yml
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Check tag version
+        shell: bash
+        run: |
+          python -c 'import json,os; v=json.load(open("package.json"))["version"]; ref=os.environ["GITHUB_REF"]; assert not ref.startswith("refs/tags/") or ref == "refs/tags/v"+v, "Tag must match package.json"'
+      - name: Package the source archive, and build facet from it for every platform
+        run: python scripts/package-release.py --source --out build/release
+      - name: Source archive holds the module, vendored modules, resources, composer and notices only
+        run: python scripts/test-prebuilt-install.py --source --os linux --arch amd64 --release-dir build/release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-source
+          path: build/release/*
+          retention-days: 7
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, os: linux, arch: amd64 }
+          - { runner: ubuntu-24.04-arm, os: linux, arch: arm64 }
+          - { runner: macos-15-intel, os: darwin, arch: amd64 }
+          - { runner: macos-15, os: darwin, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Check tag version
+        shell: bash
+        run: |
+          python -c 'import json,os; v=json.load(open("package.json"))["version"]; ref=os.environ["GITHUB_REF"]; assert not ref.startswith("refs/tags/") or ref == "refs/tags/v"+v, "Tag must match package.json"'
+      - name: Installer syntax
+        shell: bash
+        run: bash -n install.sh
+      - name: Terminal menu interaction
+        run: python3 scripts/test-installer-menu.py
+      - name: Package the facet binary, guidance bundle and notices
+        run: python scripts/package-release.py --os ${{ matrix.os }} --arch ${{ matrix.arch }} --out build/release
+      - name: Archive ships only the facet binary and generated notices
+        shell: bash
+        env:
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          python - <<'EOF'
+          import json, os, pathlib, zipfile
+          version = json.load(open("package.json"))["version"]
+          goos, goarch = os.environ["TARGET_OS"], os.environ["TARGET_ARCH"]
+          archive = pathlib.Path("build/release") / f"facet-{version}-{goos}-{goarch}.zip"
+          with zipfile.ZipFile(archive) as z:
+              names = [n for n in z.namelist() if not n.endswith("/")]
+              binaries = sorted(n for n in names if n.startswith("bin/"))
+              assert binaries == ["bin/facet"], f"{archive.name} ships {binaries}, want ['bin/facet']"
+              heading = f"## Go modules linked into the `facet` binary ({goos}/{goarch})"
+              notices = [n for n in names if "/" not in n and n.lower().endswith(".md") and heading in z.read(n).decode("utf-8")]
+              assert notices, f"{archive.name} has no generated third-party notices for {goos}/{goarch}"
+          print(f"PASS {archive.name}: {binaries[0]}, notices {notices[0]}")
+          EOF
+      - name: Validate native package and project integration
+        run: python scripts/test-prebuilt-install.py --os ${{ matrix.os }} --arch ${{ matrix.arch }} --release-dir build/release
+      - name: Install FFmpeg for package integration test (Linux)
+        if: matrix.os == 'linux'
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+      - name: Install FFmpeg (macOS)
+        if: matrix.os == 'darwin'
+        run: brew install ffmpeg
+      - name: Smoke install from the archive (no optional components, PATH untouched)
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')
+          release="$GITHUB_WORKSPACE/build/release"
+          export HOME="$(mktemp -d "$RUNNER_TEMP/facet-home-XXXXXX")"
+          bash install.sh --yes --components none --no-path \
+            --archive "$release/facet-$version-${{ matrix.os }}-${{ matrix.arch }}.zip" \
+            --checksums "$release/checksums-${{ matrix.os }}-${{ matrix.arch }}.txt"
+          facet="$HOME/.facet/current/bin/facet"
+          test "$("$facet" version)" = "facet v$version"
+          "$facet" doctor
+          for profile in .profile .bashrc .bash_profile .zshrc .zprofile .config/fish/config.fish; do
+            if [ -e "$HOME/$profile" ]; then echo "--no-path wrote $profile" >&2; exit 1; fi
+          done
+      - name: Exercise CLI integrations and media check
+        env:
+          FACET_INSTALL_SMOKE: '1'
+        run: python scripts/test-prebuilt-install.py --os ${{ matrix.os }} --arch ${{ matrix.arch }} --release-dir build/release
+      - name: Clean Linux installation with all optional components
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: |
+          docker run --rm --mount "type=bind,source=$GITHUB_WORKSPACE,target=/source,readonly" --workdir /source ubuntu:24.04 bash -c 'export FACET_DOCKER_RELEASE_DIR=/source/build/release; bash scripts/test-installer-docker.sh'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/release/*
+          retention-days: 7
+  # Every platform builds facet from the source archive as a user's machine
+  # does: the installer downloads the pinned Go from go.dev (no Go is set up
+  # here), builds, and removes Go again. Go builds are reproducible, so the
+  # facet built here must be byte for byte the source job's build.
+  build-on-machine:
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, os: linux, arch: amd64 }
+          - { runner: ubuntu-24.04-arm, os: linux, arch: arm64 }
+          - { runner: windows-2025, os: windows, arch: amd64 }
+          - { runner: windows-11-arm, os: windows, arch: arm64 }
+          - { runner: macos-15-intel, os: darwin, arch: amd64 }
+          - { runner: macos-15, os: darwin, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-source
+          path: build/release
+      - name: Install FFmpeg (Linux)
+        if: matrix.os == 'linux'
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+      - name: Install FFmpeg (macOS)
+        if: matrix.os == 'darwin'
+        run: brew install ffmpeg
+      - name: Install FFmpeg (Windows x64)
+        if: matrix.os == 'windows' && matrix.arch == 'amd64'
+        run: choco install ffmpeg --yes --no-progress
+      - name: Build facet here with install.sh --from-source (PATH untouched)
+        if: matrix.os != 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')
+          release="$GITHUB_WORKSPACE/build/release"
+          export HOME="$(mktemp -d "$RUNNER_TEMP/facet-home-XXXXXX")"
+          bash install.sh --yes --components none --no-path --from-source \
+            --archive "$release/facet-$version-source.zip" --checksums "$release/checksums-source.txt"
+          facet="$HOME/.facet/current/bin/facet"
+          test "$("$facet" version)" = "facet v$version"
+          expected=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["builds"][sys.argv[2]])' "$release/source-builds.json" "${{ matrix.os }}/${{ matrix.arch }}")
+          built=$(shasum -a 256 "$facet" | awk '{print $1}')
+          if [ "$built" != "$expected" ]; then echo "facet built here is $built; the source job built $expected" >&2; exit 1; fi
+          echo "Reproducible: facet built here is the source job's build ($built)."
+          "$facet" doctor
+      - name: Build facet.exe here with install.ps1 (PATH untouched)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        env:
+          # The Windows arm64 runner has no FFmpeg package to install, so its
+          # install skips media verification; everything else is the same.
+          SKIP_VERIFY: ${{ matrix.arch == 'arm64' && '1' || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
+          $release = Join-Path $env:GITHUB_WORKSPACE 'build/release'
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $arch = '${{ matrix.arch }}'
+          $skip = @{}
+          if ($env:SKIP_VERIFY -eq '1') { $skip['SkipVerify'] = $true }
+          ./install.ps1 -NonInteractive -Components none -NoPath @skip `
+            -ArchivePath (Join-Path $release "facet-$version-source.zip") `
+            -ChecksumPath (Join-Path $release 'checksums-source.txt')
+          $facet = Join-Path $HOME '.facet/current/bin/facet.exe'
+          $reported = & $facet version
+          if ($LASTEXITCODE -ne 0 -or $reported -ne "facet v$version") { throw "Unexpected version: $reported" }
+          # The binary says what it is, in its version information.
+          $info = (Get-Item $facet).VersionInfo
+          if ($info.ProductName -ne 'Facet' -or $info.FileDescription -ne 'Facet Toolkit' -or $info.ProductVersion -notlike "$version*") {
+            throw "facet.exe does not carry Facet's version information: $($info | Format-List | Out-String)"
+          }
+          $expected = (Get-Content -Raw (Join-Path $release 'source-builds.json') | ConvertFrom-Json).builds."windows/$arch"
+          $built = (Get-FileHash $facet -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($built -ne $expected) { throw "facet.exe built here is $built; the source job built $expected" }
+          Write-Host "Reproducible: facet.exe built here is the source job's build ($built)."
+          & $facet doctor
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ([Environment]::GetEnvironmentVariable('Path', 'User') -ne $userPath) { throw '-NoPath changed the user PATH' }
+          $left = @(Get-ChildItem ([IO.Path]::GetTempPath()) -Directory -Filter 'facet-install-*' -ErrorAction SilentlyContinue)
+          if ($left.Count) { throw "The installer left $($left.FullName -join ', ')" }
+      - name: Microsoft Defender finds nothing in the facet.exe built here
+        # Defender flagged the prebuilt windows/amd64 binaries of 2.1.0 and
+        # 2.1.1 (Trojan:Win32/Bearfoos.A!ml, a machine-learning verdict). A
+        # detection of the locally built facet.exe fails the release; a runner
+        # that cannot scan warns.
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $facet = Join-Path $HOME '.facet/current/bin/facet.exe'
+          $platform = Get-ChildItem (Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform') -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending | Select-Object -First 1
+          $mp = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+          if ($platform -and (Test-Path (Join-Path $platform.FullName 'MpCmdRun.exe'))) { $mp = Join-Path $platform.FullName 'MpCmdRun.exe' }
+          if (-not (Test-Path $mp)) { Write-Host "::warning::Microsoft Defender is not available on this runner; $facet was not scanned."; exit 0 }
+          & $mp -SignatureUpdate | Out-Host
+          & $mp -Scan -ScanType 3 -File $facet -DisableRemediation | Out-Host
+          switch ($LASTEXITCODE) {
+            0 { Write-Host "Microsoft Defender found no threats in $facet." }
+            2 { throw "Microsoft Defender flags the facet.exe built from source. Do not publish: investigate before release." }
+            default { Write-Host "::warning::Microsoft Defender could not scan $facet (exit $LASTEXITCODE); it is not verified." }
+          }
+      - name: Install lifecycle, building from source
+        env:
+          FACET_INSTALL_SMOKE: '1'
+          FACET_INSTALL_SKIP_MEDIA: ${{ matrix.os == 'windows' && matrix.arch == 'arm64' && '1' || '' }}
+          # Fetched once from go.dev and checked against the manifest, then reused.
+          FACET_TEST_TOOLCHAIN: ${{ runner.temp }}/go-toolchain${{ matrix.os == 'windows' && '.zip' || '.tar.gz' }}
+        run: python scripts/test-prebuilt-install.py --source --os ${{ matrix.os }} --arch ${{ matrix.arch }} --release-dir build/release
+      - name: Windows PowerShell 5.1 lifecycle, building from source
+        if: matrix.os == 'windows' && matrix.arch == 'amd64'
+        env:
+          FACET_INSTALL_SMOKE: '1'
+          FACET_TEST_POWERSHELL: powershell.exe
+          FACET_TEST_TOOLCHAIN: ${{ runner.temp }}/go-toolchain.zip
+        run: python scripts/test-prebuilt-install.py --source --os windows --arch amd64 --release-dir build/release
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [source, package, build-on-machine, bootstrap]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+      - name: No Windows binary is published
+        run: |
+          if ls release/facet-*-windows-*.zip >/dev/null 2>&1; then echo 'A Windows archive reached the release; Windows builds from source.' >&2; exit 1; fi
+      - name: Combine checksums
+        run: python -c 'from pathlib import Path; p=Path("release"); lines={line for f in p.glob("checksums-*.txt") for line in f.read_text().splitlines()}; (p/"SHA256SUMS.txt").write_text("\n".join(sorted(lines))+"\n",encoding="utf-8")'
+      - name: Create draft release (never replace existing assets)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "Facet $GITHUB_REF_NAME" release/facet-* release/SHA256SUMS.txt

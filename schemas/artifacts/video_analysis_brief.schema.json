@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/video_analysis_brief.schema.json",
+  "title": "Facet video analysis brief",
+  "description": "Analysis of a reference video the operator gave as inspiration (\"make something like this\"), not as footage to edit. The reference analyst writes it to artifacts/video_analysis_brief.json from media_probe, scene_detect and frame_sample, with the sampled frames in review/reference/. It describes and measures what the video does and why it works, so the production learns from it without copying it. An aspect that does not apply is marked N/A, never left out; a step that failed is listed in gaps with what the analysis loses.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "source", "content_analysis", "structure_analysis"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "source": {
+      "description": "The reference video.",
+      "type": "object",
+      "required": ["type", "duration_seconds"],
+      "properties": {
+        "type": {
+          "enum": ["youtube", "shorts", "instagram", "tiktok", "local_file", "other_url"]
+        },
+        "url": {
+          "type": "string"
+        },
+        "local_path": {
+          "description": "The local file that was analysed.",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "duration_seconds": {
+          "type": "number"
+        },
+        "resolution": {
+          "description": "Width by height, such as 1080x1920.",
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "platform_metadata": {
+          "type": "object",
+          "properties": {
+            "uploader": {
+              "type": "string"
+            },
+            "upload_date": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "view_count": {
+              "type": "integer"
+            },
+            "like_count": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "content_analysis": {
+      "description": "What the video says and to whom.",
+      "type": "object",
+      "required": ["summary", "topics", "target_audience"],
+      "properties": {
+        "summary": {
+          "description": "Two or three sentences.",
+          "type": "string"
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "key_claims": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_audience": {
+          "type": "string"
+        },
+        "tone": {
+          "enum": ["educational", "entertaining", "cinematic", "corporate", "casual", "dramatic", "inspirational", "humorous"]
+        },
+        "hook_technique": {
+          "description": "How the video opens to hold attention.",
+          "type": "string"
+        },
+        "call_to_action": {
+          "type": "string"
+        }
+      }
+    },
+    "structure_analysis": {
+      "description": "Shots, pacing and motion.",
+      "type": "object",
+      "required": ["total_scenes", "scenes", "pacing_profile"],
+      "properties": {
+        "total_scenes": {
+          "description": "Number of shots.",
+          "type": "integer"
+        },
+        "scenes": {
+          "description": "One entry per shot, in order.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["scene_index", "start_time", "end_time", "description"],
+            "properties": {
+              "scene_index": {
+                "type": "integer"
+              },
+              "start_time": {
+                "description": "Seconds.",
+                "type": "number"
+              },
+              "end_time": {
+                "description": "Seconds.",
+                "type": "number"
+              },
+              "description": {
+                "type": "string"
+              },
+              "narration_text": {
+                "type": "string"
+              },
+              "visual_type": {
+                "enum": [
+                  "talking_head",
+                  "b_roll",
+                  "screen_recording",
+                  "animation",
+                  "text_card",
+                  "stock_footage",
+                  "diagram",
+                  "chart",
+                  "product_shot",
+                  "transition",
+                  "other"
+                ]
+              },
+              "motion_kind": {
+                "description": "real_motion: a moving clip or animation. animated_still: a camera move over a still. static: a still image or card that does not move.",
+                "enum": ["real_motion", "animated_still", "static"]
+              },
+              "shot_language": {
+                "type": "object",
+                "properties": {
+                  "shot_size": {
+                    "type": "string"
+                  },
+                  "camera_movement": {
+                    "type": "string"
+                  },
+                  "lighting_key": {
+                    "type": "string"
+                  },
+                  "depth_of_field": {
+                    "type": "string"
+                  }
+                }
+              },
+              "dominant_colors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "on_screen_text": {
+                "type": "string"
+              },
+              "energy_level": {
+                "enum": ["low", "medium", "high", "peak"]
+              }
+            }
+          }
+        },
+        "pacing_profile": {
+          "type": "object",
+          "properties": {
+            "avg_scene_duration_seconds": {
+              "type": "number"
+            },
+            "shortest_scene_seconds": {
+              "type": "number"
+            },
+            "longest_scene_seconds": {
+              "type": "number"
+            },
+            "cuts_per_minute": {
+              "type": "number"
+            },
+            "pacing_style": {
+              "enum": ["slow_contemplative", "steady_educational", "dynamic_social", "rapid_fire", "variable"]
+            }
+          }
+        },
+        "motion_profile": {
+          "description": "How many shots are real motion clips, animated stills and static images, counted from the frames, never guessed. It decides the production method.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["motion_clips", "animated_stills", "static_images"],
+          "properties": {
+            "motion_clips": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "animated_stills": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "static_images": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "implied_method": {
+              "description": "One line on the production method this implies.",
+              "type": "string"
+            }
+          }
+        },
+        "shot_groups": {
+          "description": "The five aspects for each shot or group of similar shots, by scene index range. Each aspect is N/A when it does not apply.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["first_scene", "last_scene", "subject", "subject_motion", "scene", "spatial_framing", "camera"],
+            "properties": {
+              "first_scene": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "last_scene": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "subject": {
+                "description": "Type, count and attributes; how subjects appear, leave or switch.",
+                "type": "string"
+              },
+              "subject_motion": {
+                "description": "Actions in order, and interactions.",
+                "type": "string"
+              },
+              "scene": {
+                "description": "Overlays (text, lower thirds, graphics, watermarks) listed apart from the setting; point of view; setting; time of day; dynamics.",
+                "type": "string"
+              },
+              "spatial_framing": {
+                "description": "Shot size, position in frame, depth, camera height relative to the subject, and how they change.",
+                "type": "string"
+              },
+              "camera": {
+                "description": "Playback speed, lens, height, angle, focus, steadiness, movement.",
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "style_profile": {
+      "description": "How it looks and sounds.",
+      "type": "object",
+      "properties": {
+        "color_palette": {
+          "type": "object",
+          "properties": {
+            "primary_colors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "accent_colors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "overall_mood": {
+              "type": "string"
+            }
+          }
+        },
+        "typography_observed": {
+          "type": "string"
+        },
+        "transition_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "music_style": {
+          "type": "string"
+        },
+        "narration_style": {
+          "type": "object",
+          "properties": {
+            "has_narration": {
+              "type": "boolean"
+            },
+            "speaker_count": {
+              "type": "integer"
+            },
+            "delivery_style": {
+              "type": "string"
+            },
+            "words_per_minute": {
+              "type": "number"
+            }
+          }
+        },
+        "subtitle_style": {
+          "description": "How captions appear, if at all.",
+          "type": "string"
+        },
+        "production_quality": {
+          "enum": ["amateur", "prosumer", "professional", "broadcast"]
+        },
+        "closest_playbook": {
+          "description": "The closest style id: clean-professional, flat-motion-graphics, minimalist-diagram, premium-minimalist or anime-ghibli.",
+          "type": "string"
+        },
+        "playbook_delta": {
+          "description": "How the reference differs from that style.",
+          "type": "string"
+        }
+      }
+    },
+    "narration_transcript": {
+      "description": "Only when a transcript exists (the operator supplied captions, or the transcription capability is available). Otherwise leave it out and note \"no transcript\" in gaps.",
+      "type": "object",
+      "properties": {
+        "full_text": {
+          "type": "string"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string"
+              },
+              "speaker": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "language": {
+          "type": "string"
+        },
+        "word_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "replication_guidance": {
+      "description": "What the production should learn from the reference. The operator's version is never a carbon copy.",
+      "type": "object",
+      "properties": {
+        "suggested_pipeline": {
+          "description": "The pipeline that fits this kind of video.",
+          "type": "string"
+        },
+        "suggested_playbook": {
+          "description": "A style id, or custom.",
+          "type": "string"
+        },
+        "what_makes_it_work": {
+          "description": "Two or three specific things.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "key_elements_to_replicate": {
+          "description": "The elements worth keeping: pacing, structure, tone, hook style.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "elements_requiring_custom_work": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "estimated_complexity": {
+          "enum": ["simple", "moderate", "complex", "beyond_current_capability"]
+        },
+        "motion_required": {
+          "description": "True when matching the reference needs real motion, not camera moves over stills.",
+          "type": "boolean"
+        },
+        "creative_differentiation_seeds": {
+          "description": "Three to five ways the operator's version should differ from the reference.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "playbook_customizations": {
+          "description": "Changes to the closest style that would match the reference's look.",
+          "type": "object"
+        }
+      }
+    },
+    "keyframes": {
+      "description": "The sampled frames, saved under review/reference/.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "description": "Seconds.",
+            "type": "number"
+          },
+          "scene_index": {
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "gaps": {
+      "description": "What could not be analysed, and why.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

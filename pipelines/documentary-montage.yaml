@@ -1,0 +1,262 @@
+name: documentary-montage
+title: Documentary montage
+summary: >-
+  A short thematic montage of real archive and stock footage, built by
+  retrieval rather than generation: meaning comes from juxtaposition, rhythm
+  and music, closed by a one-line end tag. No narration unless asked.
+category: documentary
+starts_from: [topic, footage, brief, track]
+stance: cinematic
+delivery_promises: [source_led, motion_led]
+renderer_families: [documentary-montage]
+runtimes: [remotion, ffmpeg]
+modes: [templated]
+styles:
+  recommended: [premium-minimalist]
+  also: [clean-professional]
+reference_input: false
+
+structures:
+  - id: catalogue
+    title: Catalogue
+    use_when: >-
+      "Everyone who…", "a portrait of…": one idea seen from many angles, no
+      arc, weight from accumulation. Suits elegiac and reverent tones, and
+      pieces under a minute.
+    beats:
+      - id: opening-image
+        share: 0.10
+        purpose: The hero image that states the theme without words.
+        scenes: [video]
+      - id: accumulation
+        share: 0.75
+        purpose: Variations on the idea at different scales, places and eras; each shot a new angle on the same question.
+        scenes: [video, image]
+      - id: final-image
+        share: 0.15
+        purpose: The image the piece has earned, held long, with the end tag over it.
+        scenes: [video]
+  - id: before-after
+    title: Before and after
+    use_when: >-
+      The first half establishes, a single pivot turns it, the second half
+      answers. Suits wry and urgent tones.
+    beats:
+      - id: before
+        share: 0.45
+        purpose: Establish the world as it was, or as it is believed to be.
+        scenes: [video, image]
+      - id: pivot
+        share: 0.10
+        purpose: One shot that turns the meaning; often the held silence.
+        scenes: [video]
+      - id: after
+        share: 0.45
+        purpose: The same world seen again, changed by the pivot; rhymes with the first half.
+        scenes: [video, image]
+  - id: three-act
+    title: Three acts
+    use_when: >-
+      An essay montage over 90 seconds: setup, turn, release.
+    beats:
+      - id: setup
+        share: 0.30
+        purpose: Establish the register and the recurring images.
+        scenes: [video, image]
+      - id: turn
+        share: 0.40
+        purpose: Complicate it; the juxtapositions sharpen and the cutting tightens.
+        scenes: [video, image]
+      - id: release
+        share: 0.30
+        purpose: Let it go; longer holds toward the final image and the end tag.
+        scenes: [video]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief]
+    approval: true
+    needs: [video_stock, music]
+    review_focus:
+      - The thematic question is one sentence
+      - The tone is one register
+      - Duration and shape are concrete
+      - A music plan is present (silence only by the operator's explicit choice)
+      - An end-tag plan is present (none only by the operator's explicit choice)
+      - Narration is decided (none by default)
+    success:
+      - brief records the thematic question, tone, duration, shape, era mix, sources, music plan and end tag
+      - The operator approved the brief
+    notes: |
+      - Name the thematic question in one line: "What does a city show you in the rain?", not "a
+        video about cities" (no feeling) and not a list of shots (no theme).
+      - One tone register: elegiac (long holds, muted colour), urgent (short cuts, hard sync),
+        reverent (stately, symmetrical), wry (ironic juxtaposition), dreamlike (slow dissolves,
+        repeated motifs).
+      - Duration caps the beats: 30 to 45 s holds 8 to 12 cuts and one feeling; 60 to 90 s holds 15
+        to 25 cuts and one turn; 2 to 3 min holds 30 to 50 cuts and three acts.
+      - Real footage only: no generated clips unless the operator asks. No narration unless asked;
+        adding a voice later is a major change. Record the era mix (modern, vintage, any).
+      - Music is part of the piece; if the operator says nothing, assume they want it and offer the
+        options. Silence only by explicit choice, recorded.
+      - Propose three end tags and recommend one: 3 to 9 words, a thesis rather than a summary, ivory
+        or off-white on black, 5 to 8 seconds, shown over the final scenes by default or as a card
+        after the body.
+      - Engine: Remotion renders `CinematicRenderer` and the end tag (`EndTagOverlay` or `EndTag`).
+        HyperFrames is not used here; say so when it is installed. An FFmpeg-only cut loses the
+        rendered end tag and is a downgrade to agree first.
+
+  - id: scene_plan
+    role: director
+    consumes: [brief]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, video_stock]
+    review_focus:
+      - Slot descriptions use concrete nouns and adjectives, no emotion words
+      - Every slot has 2 or 3 short search queries
+      - At least 2 slots are marked hero
+      - Slot count and holds match the tone and duration
+      - The era mix is reflected in the sources chosen per slot
+    success:
+      - scene_plan with one scene per slot, each with description, queries, sources and target hold
+      - Target holds sum to within 10% of the duration
+      - The operator approved the slot list
+    notes: |
+      - Slots per minute from the tone: elegiac about 15 (4 s holds), reverent 17 (3.5 s), dreamlike
+        20 (3 s), wry 30 (2 s), urgent 50 (1.2 s). Write the count down before any slot.
+      - Answer the thematic question in textures, like a location scout rather than a stock
+        librarian: "rain streaking across a bus window at blue hour, faces soft behind the glass".
+      - Slot description template: subject, action or pose, environment, light, era or texture. If you
+        cannot picture a specific photograph from it, no search will find it.
+      - Two or three queries per slot, 2 to 5 words each: a literal one, a lateral one, and for hero
+        slots an associative one. Use period vocabulary for vintage briefs.
+      - Hero slots (the opening image, the turn, the final image) get longer holds and more
+        candidates.
+      - Describe the slot; do not pick the clip yet.
+      - Children's pieces use fantasy animation clips from Pixabay only, never mixed with real footage.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, brief]
+    produces: [asset_manifest]
+    approval: true
+    needs: [video_stock, image_stock, music]
+    review_focus:
+      - Every slot has exactly one picked clip
+      - No clip fills two slots
+      - Provider, original URL and licence recorded on every clip
+      - Weak slots were searched again or flagged, never forced
+    success:
+      - asset_manifest maps every slot to one clip with full provenance, plus the music
+      - All paths resolve
+    notes: |
+      - Search per slot with `direct_clip_search` (one query per slot, about three clips each,
+        landscape, at least 1280 wide, 3 to 40 s long), adding `pexels_video`, `pixabay_video` and
+        `wikimedia` where they serve the era.
+      - Look at every candidate (`frame_sample`) and pick by judgement, not by rank: era fit; motion
+        fit (long enough for its hold); compositional carry (not the same shot as its neighbours);
+        emotional register (a bright neon shot is wrong for an elegiac piece, however well it matches).
+      - A weak slot gets rewritten queries, twice at most; then tell the operator it cannot be filled
+        from open sources and offer to drop it or use their footage.
+      - Keep the rejected picks with a reason each; the edit reaches for them.
+      - Execute the music plan exactly as agreed; never switch the source here.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, brief]
+    produces: [edit_decisions, review]
+    approval: true
+    needs: [studio_checks, editing]
+    review_focus:
+      - The renderer family stays documentary-montage
+      - Hero slots hold longest; mid-sequence cutaways shortest
+      - No two adjacent cuts share subject and scale
+      - At most four kinds of transition
+      - Music configured, with one held silence in pieces of a minute or more
+      - End-tag timing set (unless the operator opted out)
+      - Every cut has a one-line reason
+    success:
+      - edit_decisions within 10% of the planned duration
+      - The operator approved the cut
+    notes: |
+      - Holds by tone (base, minimum, maximum): elegiac 4.0, 2.5, 7.0 s; reverent 3.5, 2.0, 6.0;
+        dreamlike 3.0, 1.5, 5.5; wry 2.0, 1.0, 4.0; urgent 1.2, 0.5, 2.5. Heroes get the maximum;
+        to fit the duration, shorten cutaways, never heroes.
+      - Keep the slot order (it is the intent); reorder only to land a hero on a downbeat, break a
+        repetition, or strengthen the final image.
+      - Trim each clip to its best moment. Cut before the action ends (end on a look, not a move-off)
+        and leave a few frames of handle. A clip too short for its hold can slow to 0.5 to 0.75
+        (never on faces or speech), lend time to its neighbour, or give way to the next pick. Never
+        hold a frozen frame.
+      - Cut to the music: heroes on downbeats (every 4 s at 60 bpm when the beat is unknown); one
+        silence of about 2 s at the emotional centre; music fades under the last 3 to 5 s. Music is
+        not ducked: there is no narration to duck under.
+      - Transitions: hard cuts by default; a short fade (0.5 to 1 s) between sibling images or for
+        time passing; a fade to black at an act break; fade in and fade out as bookends. No wipes,
+        slides, zoom blurs, colour splits, light leaks or glitches.
+      - Walk the timeline in pairs: change scale when subject repeats, break a palette run every four
+        cuts, never two pans in the same direction back to back. Carry ambient sound across the three
+        or four hardest joins (an L-cut of 0.5 to 1.5 s).
+      - The overlaid end tag starts at the body's duration minus the tag's, so both fade out together.
+      - Adding narration, swapping the music or stretching the duration is a change of plan: ask.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, brief]
+    produces: [render_report]
+    approval: false
+    needs: [composition, editing, audio]
+    review_focus:
+      - Duration within a second of the plan; frame size matches the platform
+      - One grade across the whole timeline
+      - Music mixed in (unless the operator opted out)
+      - End tag rendered and legible over footage, or as the final card
+      - No narration unless approved; no silent downgrade of the engine
+    success:
+      - render_report records the canvas, grade, music and end tag
+    notes: |
+      - One canvas: 1920×1080 (optionally with 2.35:1 bars) or 1080×1920 centre-cropped for social.
+        Letterbox low-resolution archive footage rather than upscaling it.
+      - One grade for every clip with `color_grade`, chosen by tone: warm film for elegiac and
+        dreamlike, cool archive for urgent and wry, neutral for reverent, desaturated high contrast
+        for harsh pieces. Never grade clip by clip.
+      - 24 fps; do not convert 24 to 30.
+      - The mix carries the music level, the silence window, the ambient carries and the fades.
+      - If a source will not decode, normalise it first (`video_trimmer`, `source_edit`); split a very
+        long render and join the halves with `video_stitch`.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - The first frame fades in and the last fades to black or holds the end-tag card
+      - The end tag reads over footage, not over black (overlay mode)
+      - The silence window is audible
+      - Mixed-era footage sits together under one grade; no adjacent repeats
+      - It never reads as a slideshow of internet clips
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis]
+    review_focus:
+      - Every clip credited with provider, original URL, creator and licence
+      - Attribution lines written where a licence requires them
+      - Music licence recorded; poster frame chosen
+    success:
+      - publish_log records the delivery package with its credits
+      - The operator accepted the delivery
+    notes: |
+      Footage from many open sources means many licences: the credits list is part of the
+      deliverable, not an appendix.

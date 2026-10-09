@@ -1,0 +1,219 @@
+name: localization-dub
+title: Localization and dubbing
+summary: >-
+  An existing video becomes language versions: translated subtitles, dubbed
+  narration, or both, timed to the original, with protected terms kept and
+  every version labelled by locale.
+category: localization
+starts_from: [footage]
+stance: editorial
+delivery_promises: [localization]
+renderer_families: [presenter]
+runtimes: [remotion, ffmpeg]
+modes: [templated]
+styles:
+  recommended: [clean-professional, flat-motion-graphics]
+  also: []
+reference_input: false
+
+structures:
+  - id: source-structure
+    title: Source structure
+    use_when: >-
+      The default: keep the original's order and timing; only the language
+      changes.
+    beats:
+      - id: opening
+        share: 0.10
+        purpose: The original opening, translated; the hook must survive translation.
+        scenes: [video]
+      - id: body
+        share: 0.75
+        purpose: The original sections in order, each translation fitted to its section's time.
+        scenes: [video, text_card]
+      - id: close
+        share: 0.15
+        purpose: Call to action and legal lines, translated exactly and held long enough to read.
+        scenes: [video, text_card]
+  - id: covered-dub
+    title: Covered dub
+    use_when: >-
+      A dub over on-camera speech where visible mouths would show the mismatch:
+      cover those sections with footage, graphics or text.
+    beats:
+      - id: opening
+        share: 0.10
+        purpose: Open on a section that needs no lip match (wide, voiceover or graphic).
+        scenes: [video, text_card]
+      - id: speaker
+        share: 0.45
+        purpose: On-camera passages where the dub is acceptable (wide or angled shots).
+        scenes: [video]
+      - id: covered
+        share: 0.30
+        purpose: Close-up passages covered with footage, graphics or text while the dub plays.
+        scenes: [video, image, callout]
+      - id: close
+        share: 0.15
+        purpose: The call to action, translated, held to read.
+        scenes: [video, text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief, source_media_review]
+    approval: true
+    needs: [analysis, transcription, voice]
+    review_focus:
+      - Source and target languages are explicit, with locale codes
+      - The treatment is clear per language (subtitles, dub, both)
+      - Glossary, protected terms and review needs are captured
+    success:
+      - brief records the localization scope and treatment per language
+      - The operator approved the brief and the plan
+    notes: |
+      - Scope: source language; target languages as locale codes (es-ES and es-MX are different
+        jobs); who reviews each translation; glossary and protected terms; legal copy.
+      - Treatment per language: subtitles only, dubbed narration, or both. Lip sync is not available
+        in this release; where visible mouths make a dub distracting, plan covered sections or
+        subtitles instead, and say so.
+      - Classify the source: one speaker, several, voiceover-led, or on camera; list on-screen text
+        (interface text, lower thirds, titles, burned-in subtitles, chart labels) that needs
+        replacement or cover.
+      - Everything rests on the source transcript. The `transcription` capability may be
+        unavailable: ask for the transcript or subtitle file.
+      - Check that a voice exists for each dubbed language before promising it (`edge_tts` covers
+        many languages; `piper_tts` only those whose voice models are installed).
+      - Engine: Remotion (composed captions) or FFmpeg (burned subtitles, replaced audio).
+        HyperFrames is not used here; say so when it is installed.
+
+  - id: script
+    role: writer
+    consumes: [brief, source_media_review]
+    produces: [script, review]
+    approval: true
+    needs: [transcription, studio_checks]
+    review_focus:
+      - The source transcript is trustworthy enough to translate
+      - Glossary and protected terms are preserved
+      - Target-language copy is reviewable before any synthesis
+    success:
+      - script holds the source sections and the translated sections for every language
+      - The operator (or their reviewer) approved each translation
+    notes: |
+      - Fix the source transcript first: names, terminology, who speaks, numbers, call-to-action
+        phrasing.
+      - Translate section by section and mark the terms that stay unchanged (brand, product and
+        technical names). Add pronunciation notes for the voice.
+      - Some languages run 20 to 30% longer than English. Check each translated section against its
+        source duration with `script_check` at the voice's pace, and condense the translation where it
+        overruns rather than rushing the voice.
+      - Subtitles: two lines of at most 42 characters, read comfortably; re-check after translation.
+      - No audio is generated from unreviewed text.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, brief, source_media_review]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, analysis]
+    review_focus:
+      - The treatment is realistic for each deliverable
+      - Timing drift and on-screen text risks are mapped
+      - Covered sections are chosen where visible speech would show the mismatch
+    success:
+      - scene_plan gives every deliverable its localization treatment, section by section
+      - The operator approved the plan
+    notes: |
+      Map timing risk: fast speech, dense legal copy, several speakers, fast cuts, close-up mouths.
+      Plan replacement or cover for every piece of on-screen language. Choose covered sections only
+      where they help; do not cover the whole video.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [voice, captions]
+    review_focus:
+      - Subtitle files exist for every language
+      - Dubbed narration exists for every dubbed language, from the approved translation
+      - Voices and pronunciation risks are recorded per language
+    success:
+      - asset_manifest lists every language's subtitles, narration and voice
+      - All paths resolve
+    notes: |
+      Subtitles first, per language: they are the fallback if a dub is blocked. Sample one dubbed
+      section per language and get it approved before the batch. Generate the dub as `lines`, one per
+      translated section with pauses that land it on the source timing, and keep one
+      `narration_timing` record per language.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing, audio]
+    review_focus:
+      - The source structure is kept unless timing forces a change
+      - Call-to-action and legal copy survive translation
+      - Language variants are organised consistently
+    success:
+      - edit_decisions exist for every language and treatment
+      - Every timing change is recorded
+    notes: |
+      Preserve the original order and timing by default. Per locale, decide where to keep the picture
+      with new subtitles, replace the voice, or cover; record every adjustment (a longer hold, a
+      shorter pause, a covered section). Keep the original music and effects under the new voice when
+      the source mix allows it, and say so when it does not. Keep each locale's decisions separate.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, editing, audio, captions]
+    review_focus:
+      - Each language output is intelligible and correctly timed
+      - Subtitle and dub timing match the chosen treatment
+      - Version labelling is unambiguous
+    success:
+      - render_report lists every locale output and its treatment
+    notes: |
+      One render per locale and treatment, named with the locale code and the mode
+      (`renders/<name>-es-MX-dub.mp4`). Never lower the source picture's quality for a language
+      version.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Speech intelligible; drift within half a second per section
+      - Subtitles fit, readable and in time
+      - Protected terms, numbers and legal copy correct in every language
+      - Labels and file names unambiguous
+    success:
+      - final_review covers every locale; passes, or passes with recorded warnings after two rounds
+      - Evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [captions]
+    review_focus:
+      - Every language package holds its video, subtitles, approved script and metadata
+      - Locale labels and titles are consistent
+      - Review notes and known caveats stay with each package
+    success:
+      - publish_log records one entry per locale and treatment
+      - The operator accepted the delivery
+    notes: |
+      Package by locale: video, subtitle files, the approved translated script, review notes and
+      metadata. Keep caveats (a pronunciation risk, a timing warning, a covered section) in the
+      package rather than dropping them.

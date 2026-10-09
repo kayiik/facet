@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">Facet</title>
+  <desc id="desc">Black monochrome Facet mark.</desc>
+  <rect x="20" y="16" width="58" height="58" rx="12" fill="#000000" opacity="0.28"/>
+  <rect x="31" y="27" width="58" height="58" rx="12" fill="#000000" opacity="0.58"/>
+  <g fill="#000000">
+    <path fill-rule="evenodd" d="M54 38 H89 V48 L94 52 L89 56 V68 H83 V83 H72 L68 87 L64 83 H42 V50 C42 43.37 47.37 38 54 38 Z M61 54 L83 67 L61 80 Z"/>
+    <path d="M89 38 C95.08 38 100 42.92 100 49 V68 H89 V56 L94 52 L89 48 Z" transform="translate(2 -1.5)"/>
+    <path d="M83 68 H100 V84 C100 90.63 94.63 96 88 96 H83 Z" transform="translate(2 2)"/>
+    <path d="M42 83 H64 L68 87 L72 83 H83 V96 H54 C47.37 96 42 90.63 42 83 Z" transform="translate(-1 2)"/>
+  </g>
+</svg>

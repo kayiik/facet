@@ -1,0 +1,243 @@
+name: hybrid
+title: Hybrid
+summary: >-
+  Supplied footage stays the anchor (an interview, product footage, a screen
+  recording, a still sequence) while designed or generated support layers
+  clarify what the source cannot show: diagrams, numbers, labels, inserts and
+  narration.
+category: hybrid
+starts_from: [footage, product, script, brief]
+stance: editorial
+delivery_promises: [hybrid, source_led]
+renderer_families: [presenter, explainer-data]
+runtimes: [remotion, hyperframes, ffmpeg]
+modes: [templated, atelier]
+styles:
+  recommended: [clean-professional, flat-motion-graphics]
+  also: [minimalist-diagram, premium-minimalist]
+reference_input: false
+
+structures:
+  - id: anchor-first
+    title: Anchor first
+    use_when: >-
+      The source carries the story; support appears only where the source
+      cannot show or summarise something.
+    beats:
+      - id: opening
+        share: 0.10
+        purpose: The strongest source moment, not a graphic.
+        scenes: [video]
+      - id: context
+        share: 0.15
+        purpose: Who and what, with a label or one support card if needed.
+        scenes: [video, callout, text_card]
+      - id: body
+        share: 0.55
+        purpose: The source carries it; diagrams, numbers and inserts appear where the footage cannot show the point.
+        scenes: [video, stat_card, comparison, callout, image]
+      - id: summary
+        share: 0.12
+        purpose: A support-led recap of what was shown.
+        scenes: [kpi_grid, text_card, video]
+      - id: close
+        share: 0.08
+        purpose: The call to action, in the source's voice where possible.
+        scenes: [video, text_card]
+  - id: alternating
+    title: Alternating
+    use_when: >-
+      An interview or talk that needs explanation between answers: source and
+      support take turns.
+    beats:
+      - id: question
+        share: 0.10
+        purpose: The question the piece answers, on a card or in the speaker's words.
+        scenes: [text_card, video]
+      - id: first-answer
+        share: 0.30
+        purpose: The source's first answer.
+        scenes: [video]
+      - id: clarify
+        share: 0.20
+        purpose: A diagram, number or comparison that makes the answer concrete.
+        scenes: [comparison, bar_chart, callout, image]
+      - id: second-answer
+        share: 0.25
+        purpose: The source builds on it.
+        scenes: [video]
+      - id: summary
+        share: 0.15
+        purpose: What it adds up to.
+        scenes: [text_card, kpi_grid, video]
+  - id: narrated-footage
+    title: Narrated footage
+    use_when: >-
+      Supplied footage or stills carried by a written narration, with data or
+      diagrams at the turning points.
+    beats:
+      - id: hook
+        share: 0.10
+        purpose: A striking source shot and the opening line.
+        scenes: [video, image]
+      - id: story
+        share: 0.50
+        purpose: The narration over the source, picture following the words.
+        scenes: [video, image, section_title]
+      - id: evidence
+        share: 0.25
+        purpose: The data or mechanism the footage cannot show.
+        scenes: [stat_card, line_chart, comparison, callout]
+      - id: close
+        share: 0.15
+        purpose: Back to the source for the final image and line.
+        scenes: [video, text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief, source_media_review]
+    approval: true
+    needs: [analysis, transcription]
+    review_focus:
+      - The anchor medium is named
+      - Each support layer is justified by a real gap
+      - The output mix matches the source inventory
+    success:
+      - brief separates source-led and support-led elements and lists the deliverables
+      - The operator approved the brief and the plan
+    notes: |
+      - Hybrid is not a catch-all: first decide what stays primary: a speaker, footage, a screen
+        recording, a still sequence, or narration-led graphics. Set a target balance (for example
+        70% source, 30% support).
+      - Each support layer (subtitles, diagrams, code, numbers, generated inserts, narration, music)
+        solves a named problem; none is decoration.
+      - Deliverables: hero cut, vertical and square cutdowns, a chaptered version, ad variants.
+      - Engine: both are real options here, so present both when both are installed. Remotion when
+        footage dominates and support is scene components; HyperFrames when the support layer is
+        HTML and GSAP native (kinetic callouts, typographic overlays); FFmpeg only when there is no
+        support layer at all.
+      - Spoken source needs a transcript; the `transcription` capability may be unavailable, so ask
+        for one.
+
+  - id: script
+    role: writer
+    consumes: [brief, source_media_review]
+    produces: [script, review]
+    approval: true
+    needs: [transcription, studio_checks]
+    review_focus:
+      - Source-led and support-led beats are clearly separated
+      - The narration or dialogue plan is realistic
+      - The script does not rely on unavailable assets without saying so
+    success:
+      - script marks what carries each section and maps to a feasible structure
+      - The operator approved the script
+    notes: |
+      Mark each section as carried by source speech or footage, by narration, by diagrams or
+      overlays, or by text alone. Keep strong source lines rather than rewriting them into weaker
+      narration. Support beats answer only what is not visible, what needs summarising, what needs
+      emphasis, or what changes for another platform.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, brief, source_media_review]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, analysis, image_stock, image_generation, video_stock]
+    review_focus:
+      - Source content stays visually primary where intended
+      - Support layers do not overload the frame
+      - Frame-shape variants are planned deliberately
+    success:
+      - scene_plan gives every scene a source or support treatment
+      - The operator approved the scene plan
+    notes: |
+      Keep the anchor on screen; never bury it under constant overlays. Reserve support scenes for
+      chapter transitions, clarifying diagrams, emphasised numbers, the summary and the call to
+      action, and genuine gaps. At most two support layers at once. For each frame shape, fix where
+      subtitles, speaker labels and charts live and where a crop becomes unsafe.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [voice, captions, image_stock, image_generation, video_stock, video_generation, music]
+    review_focus:
+      - Support assets map to real narrative gaps
+      - Shared templates are reused
+      - Generated inserts do not eclipse the source
+    success:
+      - asset_manifest separates source, supplied, recorded and generated assets
+      - All paths resolve
+    notes: |
+      Build the shared support kit first: subtitle treatment, label system, number cards, call-to-action
+      container, diagram style. Sample narration and one insert against the real footage before any
+      batch. Match support quality to the source: slick 4K graphics over handheld 1080p footage jar.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing]
+    review_focus:
+      - The anchor cut is coherent before support layers are added
+      - Support visuals clarify rather than distract
+      - Variant logic is consistent across deliverables
+    success:
+      - edit_decisions cover the planned deliverables
+    notes: |
+      Lock the anchor cut first; it must work on its own, and graphics will not rescue a weak one.
+      Then add support in order: subtitles, speaker or context labels, diagrams and numbers, inserts,
+      call to action. When layers collide, remove one.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, editing, audio, captions]
+    review_focus:
+      - Source and support layers remain balanced
+      - Frame-shape variants preserve readability
+      - Audio coherent across footage and generated elements
+      - The runtime used is the runtime locked at intake
+    success:
+      - render_report with every output
+    notes: |
+      Source dialogue, narration, music and effects become one mix at one loudness; no jump between
+      source and generated sections. Check every variant for crop and text safety.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - It reads as a source-led video with support, not a collage
+      - Support graphics are accurate and never cover the source's key moments
+      - Variants readable; loudness steady across sections
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis, captions]
+    review_focus:
+      - Hero cut and derivatives clearly organised
+      - Metadata reflects the real source mix
+      - Package usable without manual cleanup
+    success:
+      - publish_log records the delivery package
+      - The operator accepted the delivery
+    notes: |
+      Package a source-led piece as what it is (an interview, a product film, a recording with
+      support), not as a generated video.

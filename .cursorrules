@@ -1,0 +1,4 @@
+# Release-Harness Cursor Rules
+- When verifying code changes, run `npx release-harness run-local` in the terminal.
+- Inspect `verdict.json` in the evidence directory. Fix code defects until exit code is 0.
+- Do not mutate `.release-harness/topology.json` or `origins.json` unless service ports change.

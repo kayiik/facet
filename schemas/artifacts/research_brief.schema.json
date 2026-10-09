@@ -1,0 +1,649 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/research_brief.schema.json",
+  "title": "Facet research brief",
+  "description": "Research that grounds the video in real facts, references and audience questions. The researcher writes it to artifacts/research_brief.json, research summary first. It gathers material and makes no creative decisions; the proposal turns it into concepts. What it covers depends on what the video starts from: a topic fills the landscape, data points, audience insights and angles; a product or website fills product; a music track fills track; animation research adds technique references and accuracy notes; cinematic research writes directions instead of angles. The pipeline's success list for the research stage sets the minimum counts. Never invent a statistic, a quote, a question or a source; when data is thin or nothing exists, say so in research_summary and gaps_and_risks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "topic", "research_date", "research_summary", "sources"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "topic": {
+      "description": "The subject researched (topic, product, website, track or material), as the operator stated it.",
+      "type": "string",
+      "minLength": 1
+    },
+    "starts_from": {
+      "description": "What the video starts from, which decides what the research covers.",
+      "enum": ["topic", "product", "website", "footage", "audio", "track", "reference", "script", "brief"]
+    },
+    "research_date": {
+      "description": "When the research was done; freshness matters.",
+      "type": "string",
+      "format": "date"
+    },
+    "research_summary": {
+      "description": "One paragraph: the single most important finding and why it matters for the video. Say here when data is thin or nothing exists on the subject.",
+      "type": "string",
+      "minLength": 1
+    },
+    "landscape": {
+      "description": "What already exists on the subject. Topic research maps at least 3 pieces (target 5 to 8).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["existing_content", "saturated_angles", "underserved_gaps"],
+      "properties": {
+        "existing_content": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["title", "source", "angle", "what_it_covers"],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "source": {
+                "description": "Where it lives: youtube, a blog, tiktok and so on.",
+                "type": "string"
+              },
+              "angle": {
+                "description": "The narrative approach it takes.",
+                "type": "string"
+              },
+              "what_it_covers": {
+                "type": "string"
+              },
+              "what_it_misses": {
+                "type": "string"
+              },
+              "engagement_signal": {
+                "description": "Views, upvotes or comments, whatever is visible.",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "saturated_angles": {
+          "description": "Angles done to death; avoid them.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "underserved_gaps": {
+          "description": "Angles or questions existing content does not cover well. A gap is the opportunity.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "trending": {
+      "description": "What is happening now around the subject. If nothing is current, set timeliness_window to evergreen; that is a finding too.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recent_developments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["headline", "date", "relevance"],
+            "properties": {
+              "headline": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "date": {
+                "type": "string"
+              },
+              "relevance": {
+                "description": "Why it matters for this video.",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "active_discussions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["platform", "topic_or_url", "sentiment"],
+            "properties": {
+              "platform": {
+                "description": "reddit, hackernews and so on.",
+                "type": "string"
+              },
+              "topic_or_url": {
+                "type": "string"
+              },
+              "sentiment": {
+                "description": "What people feel: excitement, frustration, debate, confusion.",
+                "type": "string"
+              },
+              "key_quotes": {
+                "description": "Direct quotes in the community's own voice.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "timeliness_window": {
+          "description": "How time-sensitive the subject is: evergreen, weeks, days or hours.",
+          "type": "string"
+        }
+      }
+    },
+    "data_points": {
+      "description": "Specific, sourced facts and statistics (\"73% of developers…\", never \"most developers…\"). Topic research needs at least 3 (target 5 to 8).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "source_url", "credibility"],
+        "properties": {
+          "claim": {
+            "description": "The specific fact, statistic or data point.",
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_name": {
+            "description": "For example \"Stack Overflow 2025 Developer Survey\".",
+            "type": "string"
+          },
+          "credibility": {
+            "enum": ["primary_source", "secondary_source", "anecdotal"]
+          },
+          "surprise_factor": {
+            "description": "How unexpected it is for the target audience.",
+            "enum": ["expected", "notable", "surprising", "counterintuitive"]
+          },
+          "usable_as": {
+            "description": "How it could be used: hook, stat scene, script anchor, closing line.",
+            "type": "string"
+          },
+          "visual_potential": {
+            "description": "How well it animates: \"73% to 23%\" animates; \"it matters\" does not.",
+            "enum": ["high", "medium", "low"]
+          }
+        }
+      }
+    },
+    "audience_insights": {
+      "description": "What the audience really asks and gets wrong, from forums and comments, never invented.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["common_questions", "misconceptions", "knowledge_level"],
+      "properties": {
+        "common_questions": {
+          "description": "Real questions people ask.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "misconceptions": {
+          "description": "What people get wrong, with the real answer.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["myth", "reality"],
+            "properties": {
+              "myth": {
+                "type": "string"
+              },
+              "reality": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "knowledge_level": {
+          "description": "What the audience already knows and what will be new.",
+          "type": "string"
+        },
+        "pain_points": {
+          "description": "Frustrations, confusions and complaints.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "expert_voices": {
+      "description": "Named experts and their positions, when the subject has them.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "position"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title_or_affiliation": {
+            "type": "string"
+          },
+          "position": {
+            "description": "Their stance or a notable quote.",
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "contrarian": {
+            "description": "True when it challenges the mainstream view.",
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "angles_discovered": {
+      "description": "Genuinely different angles, raw material for the proposal: at least 3 for topic research (target 4 or 5), including one evergreen and one surprising or contrarian; no two share a hook structure.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "hook", "type", "why_now"],
+        "properties": {
+          "name": {
+            "description": "Short angle title, 5 to 8 words.",
+            "type": "string"
+          },
+          "hook": {
+            "description": "One sentence that opens an information gap.",
+            "type": "string"
+          },
+          "type": {
+            "enum": ["trending", "evergreen", "contrarian", "narrative", "data_driven"]
+          },
+          "why_now": {
+            "description": "Why the angle is compelling now, citing findings.",
+            "type": "string"
+          },
+          "grounded_in": {
+            "description": "The data points, audience insights or gaps it rests on.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "visual_references": {
+      "description": "Two or three ways others visualise the subject, and what works in each.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "what_works": {
+            "description": "Why this visual approach is effective.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "product": {
+      "description": "Product or website research: what it really does and can be shown doing.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "promise_states": {
+          "description": "The product states that prove its main promise on screen.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "user_journey": {
+          "description": "The steps a user takes, in order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "claims": {
+          "description": "Claims the brand makes and whether they hold.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["claim", "holds"],
+            "properties": {
+              "claim": {
+                "type": "string"
+              },
+              "holds": {
+                "enum": ["yes", "partly", "no", "unconfirmed"]
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "competitor_framing": {
+          "description": "How competitors frame the same problem.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["competitor", "framing"],
+            "properties": {
+              "competitor": {
+                "type": "string"
+              },
+              "framing": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          }
+        },
+        "showable": {
+          "description": "What can be shown from the real product.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "needs_illustration": {
+          "description": "What would have to be illustrated, and then labelled as illustration on screen.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "track": {
+      "description": "Music track research: its structure and the timestamps scenes should land on.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tempo_bpm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sections": {
+          "description": "Intro, verse, chorus, drop, outro and so on, in order.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "start_seconds", "end_seconds"],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "start_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "energy": {
+                "enum": ["low", "medium", "high", "peak"]
+              }
+            }
+          }
+        },
+        "energy_peaks": {
+          "description": "Seconds where the energy peaks.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "vocals": {
+          "description": "Where vocals fall, with the lyrics when they matter.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["start_seconds", "end_seconds"],
+            "properties": {
+              "start_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "lyrics": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "sync_points": {
+          "description": "Timestamps scenes should land on.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["seconds"],
+            "properties": {
+              "seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "purpose": {
+                "description": "What happens there: a downbeat, a drop, a lyric cue.",
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "technique_references": {
+      "description": "Animation research: techniques found for showing the subject.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["technique", "approach"],
+        "properties": {
+          "technique": {
+            "description": "What it is: a progressive diagram build, a morph between states, a particle field.",
+            "type": "string"
+          },
+          "where_used": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "approach": {
+            "description": "What it needs: designed motion, data scenes, illustrated stills, generated clips, hand-authored SVG or canvas.",
+            "type": "string"
+          },
+          "complexity": {
+            "enum": ["reusable", "repeatable", "bespoke"]
+          }
+        }
+      }
+    },
+    "accuracy_notes": {
+      "description": "For math, science and technical subjects: what must stay correct when it is simplified.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["concept", "precise_definition"],
+        "properties": {
+          "concept": {
+            "type": "string"
+          },
+          "precise_definition": {
+            "type": "string"
+          },
+          "acceptable_simplification": {
+            "type": "string"
+          },
+          "misleading_metaphors": {
+            "description": "Metaphors that teach something wrong (electrons as tiny planets).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "directions": {
+      "description": "Cinematic research writes directions instead of angles; they differ in arc and camera approach, and one is built on texture and intimacy rather than spectacle.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "emotional_pitch", "audio_direction", "motion_commitment"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "emotional_pitch": {
+            "description": "One sentence on what the audience should feel.",
+            "type": "string"
+          },
+          "references": {
+            "description": "Visual, grade and palette references, by URL or description.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "audio_direction": {
+            "description": "Music and sound by energy and texture (not track names), music-driven or narrated.",
+            "type": "string"
+          },
+          "motion_commitment": {
+            "description": "How much real motion it needs, and whether the configured providers can make it.",
+            "type": "string"
+          },
+          "camera_approach": {
+            "description": "Concrete camera and editing rhythm, such as low-key tungsten light, shallow focus, slow push-ins.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sources": {
+      "description": "Every source used. Topic research needs at least 5 with URLs (target 10 to 15), at least 2 primary.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "title", "used_for"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "used_for": {
+            "description": "Which part of this record it supports.",
+            "type": "string"
+          },
+          "reliability": {
+            "enum": ["primary", "secondary", "anecdotal"]
+          },
+          "published": {
+            "description": "Publication date or year.",
+            "type": "string"
+          },
+          "stale": {
+            "description": "True when it is older than two years.",
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "gaps_and_risks": {
+      "description": "Thin data, stale or weak sources, claims that could not be confirmed, anything that could not be researched.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "searches": {
+      "description": "How many searches were run.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

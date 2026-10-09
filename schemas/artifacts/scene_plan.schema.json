@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/scene_plan.schema.json",
+  "title": "Facet scene plan",
+  "description": "What is on screen at every moment, why, how it moves, and whether the configured tools can make it. The director writes it with the art director to artifacts/scene_plan.json, and plan_check reads it: coverage of the narration, gaps and overlaps, variety, slideshow risk, delivery-promise fit and asset feasibility. One to three scenes for each script section; the first scene starts at 0 and the last ends at the full duration. Never three scenes of the same type in a row, and at least three types. Exact text (titles, numbers, names, calls to action, legal lines) is a text scene the composition renders, never text inside a generated image.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "scenes"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "style_playbook": {
+      "description": "The style id in use (clean-professional, flat-motion-graphics, minimalist-diagram, premium-minimalist, anime-ghibli), or custom for a look designed for this piece.",
+      "type": "string"
+    },
+    "scenes": {
+      "description": "The scenes in order.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "description", "start_seconds", "end_seconds"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "description": "The scene's render form. Templated work uses an Explainer scene type (text_card, hero_title, section_title, callout, stat_card, stat_reveal, kpi_grid, progress_bar, comparison, bar_chart, line_chart, pie_chart, terminal_scene, screenshot_scene, anime_scene, provider_chip) or a media cut (image, video). Footage, character and atelier scenes use the closest general kind: talking_head, broll, animation, character_scene, diagram, transition, generated, screen_recording.",
+            "enum": [
+              "text_card",
+              "hero_title",
+              "section_title",
+              "callout",
+              "stat_card",
+              "stat_reveal",
+              "kpi_grid",
+              "progress_bar",
+              "comparison",
+              "bar_chart",
+              "line_chart",
+              "pie_chart",
+              "terminal_scene",
+              "screenshot_scene",
+              "anime_scene",
+              "provider_chip",
+              "image",
+              "video",
+              "talking_head",
+              "broll",
+              "animation",
+              "character_scene",
+              "diagram",
+              "transition",
+              "generated",
+              "screen_recording"
+            ]
+          },
+          "description": {
+            "description": "What is on screen.",
+            "type": "string"
+          },
+          "start_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lines": {
+            "description": "Ids of the script's narration lines the scene covers, in order.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "script_section_id": {
+            "description": "The script section the scene covers.",
+            "type": "string"
+          },
+          "framing": {
+            "type": "string"
+          },
+          "movement": {
+            "description": "How the picture moves: for a still, a camera move (zoom-in, zoom-out, pan-left, pan-right, ken-burns, parallax, static); for a clip, its motion.",
+            "type": "string"
+          },
+          "transition_in": {
+            "description": "The transition into this scene: cut, fade, slide, wipe, flip, clock-wipe or iris, from the style's set.",
+            "type": "string"
+          },
+          "transition_out": {
+            "type": "string"
+          },
+          "overlay_notes": {
+            "description": "Titles, captions, labels and chips over the picture, listed apart from it.",
+            "type": "string"
+          },
+          "shot_language": {
+            "description": "Cinematography for filmed, found or generated shots.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "shot_size": {
+                "enum": ["extreme_wide", "wide", "medium_wide", "medium", "medium_close", "close_up", "extreme_close_up", "over_shoulder", "insert", "establishing"]
+              },
+              "camera_movement": {
+                "enum": [
+                  "static",
+                  "pan_left",
+                  "pan_right",
+                  "tilt_up",
+                  "tilt_down",
+                  "dolly_in",
+                  "dolly_out",
+                  "tracking_left",
+                  "tracking_right",
+                  "crane_up",
+                  "crane_down",
+                  "handheld",
+                  "steadicam",
+                  "whip_pan",
+                  "orbital",
+                  "zoom_in",
+                  "zoom_out",
+                  "rack_focus"
+                ]
+              },
+              "lens_mm": {
+                "type": "integer",
+                "enum": [14, 24, 35, 50, 85, 135, 200]
+              },
+              "lighting_key": {
+                "enum": ["high_key", "low_key", "natural", "golden_hour", "blue_hour", "tungsten_warm", "neon", "silhouette", "rim_lit", "volumetric", "overcast_soft"]
+              },
+              "depth_of_field": {
+                "enum": ["shallow", "medium", "deep"]
+              },
+              "color_temperature": {
+                "enum": ["cool", "neutral", "warm", "mixed"]
+              }
+            }
+          },
+          "shot_intent": {
+            "description": "Why the scene exists: the information it carries or the feeling it causes. A scene with no stated intent is slideshow filler.",
+            "type": "string"
+          },
+          "narrative_role": {
+            "description": "The role the scene plays in the story.",
+            "enum": [
+              "establish_context",
+              "introduce_subject",
+              "build_tension",
+              "deliver_payload",
+              "transition",
+              "emotional_beat",
+              "evidence",
+              "comparison",
+              "resolution",
+              "call_to_action"
+            ]
+          },
+          "information_role": {
+            "description": "What the viewer learns or feels from the scene.",
+            "type": "string"
+          },
+          "hero_moment": {
+            "description": "True for the visual peak of the video; it holds longest and gets the most polish.",
+            "type": "boolean",
+            "default": false
+          },
+          "five_aspects": {
+            "description": "The five aspects, specified for every shot that is filmed, found or generated so prompts and searches are precise; an aspect is N/A when it does not apply, never left out. For a scene the composition renders, camera is N/A and spatial_framing describes the layout and which element holds the centre.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subject", "subject_motion", "scene", "spatial_framing", "camera"],
+            "properties": {
+              "subject": {
+                "type": "string"
+              },
+              "subject_motion": {
+                "type": "string"
+              },
+              "scene": {
+                "description": "Setting, point of view, time of day.",
+                "type": "string"
+              },
+              "spatial_framing": {
+                "description": "Shot size, position, depth.",
+                "type": "string"
+              },
+              "camera": {
+                "description": "Lens, height, angle, focus, steadiness, movement.",
+                "type": "string"
+              }
+            }
+          },
+          "character_actions": {
+            "description": "Acting beats for rigged character animation scenes.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["character_id", "action_sequence"],
+              "properties": {
+                "character_id": {
+                  "type": "string"
+                },
+                "emotion": {
+                  "type": "string"
+                },
+                "action_sequence": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "dialogue": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "texture_keywords": {
+            "description": "Visual texture: grain, clean, anamorphic, gritty, ethereal and so on.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required_assets": {
+            "description": "Every asset the scene needs and where it comes from. Each must have a configured, supplied or rendered source; where a capability is unavailable, plan the alternative.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "description", "source"],
+              "properties": {
+                "type": {
+                  "description": "image, video, narration, music, sfx and so on.",
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "source": {
+                  "description": "generate: an image or video generation tool. source: stock or archive search. provided: supplied by the operator. record: a screen or camera capture. render: drawn by the composition, with no file to make.",
+                  "enum": ["generate", "source", "provided", "record", "render"]
+                },
+                "tool": {
+                  "description": "The tool planned to make or fetch it.",
+                  "type": "string"
+                },
+                "paid": {
+                  "description": "True when the planned tool may charge, so the asset stage makes a sample first.",
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

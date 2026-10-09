@@ -1,0 +1,27 @@
+{
+  "name": "facet",
+  "owner": {
+    "name": "kayiik",
+    "url": "https://github.com/kayiik"
+  },
+  "metadata": {
+    "description": "Facet's video production skills and MCP tools for Claude Code.",
+    "version": "0.0.1"
+  },
+  "plugins": [
+    {
+      "name": "facet",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/kayiik/facet.git",
+        "path": "plugins/claude",
+        "ref": "v0.0.1"
+      },
+      "description": "Create, edit, render, and review video with Facet's production skills and MCP tools. Needs the Facet Toolkit: https://kayiik.github.io/facet/",
+      "version": "0.0.1",
+      "homepage": "https://kayiik.github.io/facet/",
+      "repository": "https://github.com/kayiik/facet",
+      "license": "AGPL-3.0-or-later"
+    }
+  ]
+}

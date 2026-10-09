@@ -1,0 +1,41 @@
+{
+  "name": "facet",
+  "version": "0.0.1",
+  "description": "Create, edit, render, and review video with Facet's production skills and MCP tools. Needs the Facet Toolkit: https://kayiik.github.io/facet/",
+  "author": {
+    "name": "Facet Contributors",
+    "url": "https://github.com/kayiik/facet"
+  },
+  "homepage": "https://kayiik.github.io/facet/",
+  "repository": "https://github.com/kayiik/facet",
+  "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "video",
+    "video-production",
+    "mcp",
+    "ffmpeg",
+    "remotion",
+    "narration",
+    "captions"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Facet",
+    "shortDescription": "Create, edit, render, and review video",
+    "longDescription": "Facet's production skills and MCP tools: inspect media, edit, narrate, caption, compose with Remotion or HyperFrames, generate with paid providers after you approve each call, and review the result. Needs the Facet Toolkit, the facet command on PATH: https://kayiik.github.io/facet/",
+    "developerName": "Facet Contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://kayiik.github.io/facet/",
+    "defaultPrompt": [
+      "Make a narrated explainer video from my notes",
+      "Cut the silences out of this recording",
+      "Review this video for technical problems"
+    ]
+  }
+}

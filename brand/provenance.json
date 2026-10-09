@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "brand": "Facet",
+  "visualWordmark": "facet.",
+  "approvedIdentity": "Precision Dovetail Assembly (Puzzle B)",
+  "source": {
+    "kind": "approved brand direction",
+    "authority": "project owner",
+    "description": "The geometry, piece translations, and signature colors are transcribed directly into the canonical SVG assets."
+  },
+  "canonicalGeometry": {
+    "viewBox": "0 0 120 120",
+    "tiles": {
+      "back": {
+        "x": 20,
+        "y": 16,
+        "width": 58,
+        "height": 58,
+        "rx": 12,
+        "fill": "#F36C7A"
+      },
+      "middle": {
+        "x": 31,
+        "y": 27,
+        "width": 58,
+        "height": 58,
+        "rx": 12,
+        "fill": "#10B981"
+      },
+      "foreground": {
+        "nominalX": 42,
+        "nominalY": 38,
+        "width": 58,
+        "height": 58,
+        "fill": "#D92D48",
+        "pieces": [
+          {
+            "name": "hero",
+            "path": "M54 38 H89 V48 L94 52 L89 56 V68 H83 V83 H72 L68 87 L64 83 H42 V50 C42 43.37 47.37 38 54 38 Z M61 54 L83 67 L61 80 Z",
+            "fillRule": "evenodd"
+          },
+          {
+            "name": "upper-right",
+            "path": "M89 38 C95.08 38 100 42.92 100 49 V68 H89 V56 L94 52 L89 48 Z",
+            "translate": [2, -1.5]
+          },
+          {
+            "name": "lower-right",
+            "path": "M83 68 H100 V84 C100 90.63 94.63 96 88 96 H83 Z",
+            "translate": [2, 2]
+          },
+          {
+            "name": "lower-wide",
+            "path": "M42 83 H64 L68 87 L72 83 H83 V96 H54 C47.37 96 42 90.63 42 83 Z",
+            "translate": [-1, 2]
+          }
+        ]
+      }
+    }
+  },
+  "canonicalAssets": [
+    "logos/mark.svg",
+    "logos/mark-inverse.svg",
+    "logos/lockup.svg",
+    "logos/lockup-inverse.svg",
+    "logos/wordmark.svg",
+    "logos/wordmark-inverse.svg",
+    "logos/mono-black.svg",
+    "logos/mono-white.svg",
+    "icons/favicon.svg",
+    "icons/app-icon.svg",
+    "icons/icon-192.svg",
+    "icons/icon-512.svg",
+    "og/og-default.svg"
+  ],
+  "derivedAssets": {
+    "og/og-default.png": {
+      "source": "og/og-default.svg",
+      "mediaType": "image/png",
+      "width": 1200,
+      "height": 630,
+      "renderer": "Playwright 1.63.0 Chromium at CSS scale 1",
+      "determinism": "Byte-stable with the pinned Chromium build, fixed render settings, and the same available font stack.",
+      "command": "node scripts/generate-brand-og.mjs"
+    }
+  },
+  "siteProjections": {
+    "docs/favicon.svg": "icons/favicon.svg",
+    "docs/logo-mark.svg": "logos/mark.svg",
+    "docs/og-default.svg": "og/og-default.svg",
+    "docs/og-default.png": "og/og-default.png"
+  }
+}

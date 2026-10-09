@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/render_report.schema.json",
+  "title": "Facet render report",
+  "description": "What the compose stage rendered, written by the editor to artifacts/render_report.json straight after rendering. A zero exit code is not acceptance: the review stage follows at once and writes final_review.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "outputs"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "outputs": {
+      "description": "One entry per rendered file, each named by what it is: renders/<name>-<variant>-<ratio>.mp4.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "format", "resolution", "duration_seconds"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "format": {
+            "description": "Container, such as mp4.",
+            "type": "string"
+          },
+          "codec": {
+            "description": "Video codec, such as h264.",
+            "type": "string"
+          },
+          "audio_codec": {
+            "type": "string"
+          },
+          "resolution": {
+            "description": "Width by height, such as 1920x1080.",
+            "type": "string"
+          },
+          "fps": {
+            "type": "number"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "file_size_bytes": {
+            "type": "integer"
+          },
+          "platform_target": {
+            "description": "The platform this file is for.",
+            "type": "string"
+          },
+          "variant": {
+            "description": "Which deliverable it is: a clip number, a language, a frame ratio.",
+            "type": "string"
+          },
+          "loudness_lufs": {
+            "description": "Integrated loudness of the file.",
+            "type": "number"
+          }
+        }
+      }
+    },
+    "render_runtime": {
+      "description": "The engine that rendered; it must be the one locked at the proposal.",
+      "enum": ["remotion", "hyperframes", "ffmpeg"]
+    },
+    "composition_mode": {
+      "enum": ["templated", "atelier"]
+    },
+    "composition": {
+      "description": "What was rendered: a stock composition (Explainer, CinematicRenderer, TalkingHead and the others), the bespoke composition id, or the HyperFrames workspace path.",
+      "type": "string"
+    },
+    "render_grammar": {
+      "description": "The renderer family that ran.",
+      "enum": [
+        "explainer-data",
+        "explainer-teacher",
+        "cinematic-trailer",
+        "documentary-montage",
+        "product-reveal",
+        "screen-demo",
+        "presenter",
+        "animation-first"
+      ]
+    },
+    "render_time_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "hyperframes_checks": {
+      "description": "HyperFrames work: lint and validate must pass before the render.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lint": {
+          "enum": ["passed", "failed", "skipped"]
+        },
+        "validate": {
+          "enum": ["passed", "failed", "skipped"]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "warnings": {
+      "description": "Anything the render reported or you noticed that the review should look at.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verification_notes": {
+      "description": "What was checked after the render (the file plays, duration against the target, the engine used) and what each check found.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "slideshow_risk_score": {
+      "description": "Slideshow risk from plan_check on the final cut.",
+      "type": "object",
+      "properties": {
+        "average": {
+          "type": "number"
+        },
+        "verdict": {
+          "type": "string"
+        }
+      }
+    },
+    "final_review_ref": {
+      "description": "Path of the final_review written for this render.",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

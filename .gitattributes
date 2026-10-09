@@ -1,0 +1,18 @@
+# Line endings.
+#
+# Fixtures carry digests computed over their raw bytes, so a CRLF conversion on
+# checkout changes the bytes and breaks verification: the seed manifest went
+# from 526 to 540 bytes on a Windows checkout and its sha256 no longer matched
+# the value recorded in tests and shared with the host lane.
+#
+# `-text` disables all newline translation for these paths, so the bytes on
+# disk are the bytes that were committed, on every platform.
+fixtures/** -text
+
+# The marketplace plugins are compared byte for byte with what facet bundle
+# projects (internal/bundle TestCommittedPluginsMatchThisFacet), and the CLIs
+# that clone them read their manifests and digests as committed.
+plugins/** -text
+
+*.sh text eol=lf
+installer/*.tsv text eol=lf

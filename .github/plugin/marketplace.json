@@ -1,0 +1,27 @@
+{
+  "name": "facet",
+  "owner": {
+    "name": "kayiik"
+  },
+  "metadata": {
+    "description": "Facet's video production skills and MCP tools for GitHub Copilot CLI.",
+    "version": "0.0.1"
+  },
+  "plugins": [
+    {
+      "name": "facet",
+      "source": {
+        "source": "github",
+        "repo": "kayiik/facet",
+        "path": "plugins/copilot",
+        "ref": "v0.0.1"
+      },
+      "description": "Create, edit, render, and review video with Facet's production skills and MCP tools. Needs the Facet Toolkit: https://kayiik.github.io/facet/",
+      "version": "0.0.1",
+      "homepage": "https://kayiik.github.io/facet/",
+      "repository": "https://github.com/kayiik/facet",
+      "license": "AGPL-3.0-or-later",
+      "postInstallMessage": "Facet needs the Facet Toolkit, the facet command on PATH. Install it from https://kayiik.github.io/facet/ and restart Copilot CLI."
+    }
+  ]
+}

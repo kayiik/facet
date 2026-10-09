@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "facet/tools/video_stitch",
+  "title": "Video Stitch Tool",
+  "description": "Request for video_stitch: clip validation, multi-clip assembly with transitions, and spatial layouts. The same contract `facet tools describe video_stitch` publishes.",
+  "type": "object",
+  "required": ["operation", "clips"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": ["validate", "stitch", "preview_stitch", "spatial"],
+      "description": "validate compares clip properties; stitch joins clips; preview_stitch joins them fast at 640x360; spatial composes two clips into one frame"
+    },
+    "clips": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Input video file paths, in playback order"
+    },
+    "output_path": {
+      "type": "string",
+      "description": "Path for the output video file"
+    },
+    "transition": {
+      "type": "string",
+      "enum": ["cut", "crossfade", "fade"],
+      "default": "cut",
+      "description": "Transition between clips. 'cut' = hard cut, 'crossfade' = blend between clips, 'fade' = fade through black"
+    },
+    "transition_duration": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 5.0,
+      "default": 0.5,
+      "description": "Transition length in seconds (ignored for 'cut')"
+    },
+    "auto_normalize": {
+      "type": "boolean",
+      "default": false,
+      "description": "Accepted for compatibility. stitch and preview_stitch always normalize every clip to one size, frame rate and audio format."
+    },
+    "target_resolution": {
+      "type": "string",
+      "pattern": "^\\d+x\\d+$",
+      "description": "stitch only: output size such as 1920x1080. Defaults to the first clip's size."
+    },
+    "target_fps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120,
+      "description": "stitch only: output frame rate. Defaults to the first clip's rate."
+    },
+    "codec": {
+      "type": "string",
+      "default": "libx264",
+      "description": "spatial only: video encoder."
+    },
+    "crf": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 51,
+      "default": 23,
+      "description": "Constant Rate Factor for quality (lower = better)"
+    },
+    "preset": {
+      "type": "string",
+      "enum": ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
+      "default": "medium",
+      "description": "FFmpeg encoding preset"
+    },
+    "layout": {
+      "type": "string",
+      "enum": ["side_by_side", "vertical_stack", "picture_in_picture"],
+      "default": "side_by_side",
+      "description": "Spatial layout for the 'spatial' operation"
+    },
+    "pip_position": {
+      "type": "string",
+      "enum": ["top_left", "top_right", "bottom_left", "bottom_right"],
+      "default": "bottom_right",
+      "description": "Corner for the picture-in-picture overlay"
+    },
+    "pip_scale": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 0.5,
+      "default": 0.3,
+      "description": "Scale of the picture-in-picture overlay relative to the base video"
+    },
+    "pip_margin": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10,
+      "description": "Margin in pixels between the picture-in-picture overlay and the frame edges"
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 300,
+      "description": "Time allowed for the whole operation"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,287 @@
+name: character-animation
+title: Character animation
+summary: >-
+  Short pieces carried by one or two reusable cartoon characters who act: a
+  mascot explainer, a small story, a music-led scene. Characters are built as
+  rigged SVG with authored timing in HyperFrames or a bespoke Remotion
+  composition.
+category: animation
+starts_from: [topic, script, brief, reference, track]
+stance: animation
+delivery_promises: [motion_led]
+renderer_families: [animation-first]
+runtimes: [hyperframes, remotion]
+modes: [atelier]
+styles:
+  recommended: [flat-motion-graphics]
+  also: [clean-professional, minimalist-diagram, anime-ghibli]
+reference_input: true
+
+structures:
+  - id: establish-act-react
+    title: Establish, act, react
+    use_when: >-
+      A small story with one turn: few, strong shots. Acted shots are authored
+      in the atelier composition (listed here as video).
+    beats:
+      - id: establish
+        share: 0.20
+        purpose: The character in their world, wanting something.
+        scenes: [anime_scene, image]
+      - id: action
+        share: 0.35
+        purpose: The character tries; one clear physical action with anticipation and follow-through.
+        scenes: [video]
+      - id: reaction
+        share: 0.25
+        purpose: The result lands on the character's face and body; hold it.
+        scenes: [video]
+      - id: resolution
+        share: 0.20
+        purpose: The new state, and the title or closing line.
+        scenes: [video, text_card]
+  - id: mascot-explainer
+    title: Mascot explainer
+    use_when: >-
+      A brand or product idea taught by a character who demonstrates it.
+    beats:
+      - id: hook
+        share: 0.12
+        purpose: The character meets the problem; a reaction the viewer recognises.
+        scenes: [video, hero_title]
+      - id: problem
+        share: 0.20
+        purpose: Why the problem matters, acted rather than told.
+        scenes: [video, callout]
+      - id: demonstration
+        share: 0.43
+        purpose: The character shows the idea working, one step per beat.
+        scenes: [video, callout, image]
+      - id: payoff
+        share: 0.15
+        purpose: The character's world after the fix.
+        scenes: [video]
+      - id: end-card
+        share: 0.10
+        purpose: Name and call to action beside the character's final pose.
+        scenes: [text_card]
+  - id: music-led-scene
+    title: Music-led scene
+    use_when: >-
+      A character performs to a track; the music's structure is the script.
+    beats:
+      - id: intro
+        share: 0.15
+        purpose: The character and the setting before the beat drops.
+        scenes: [anime_scene, video]
+      - id: groove
+        share: 0.45
+        purpose: Repeated actions on the beat, varied in staging and camera.
+        scenes: [video]
+      - id: peak
+        share: 0.25
+        purpose: The biggest action on the musical peak.
+        scenes: [video]
+      - id: outro
+        share: 0.15
+        purpose: Wind down to a final pose as the track ends.
+        scenes: [video, text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief]
+    approval: false
+    needs: []
+    review_focus:
+      - The piece depends on characters who act
+      - Character count and audio architecture are stated or marked as open
+    success:
+      - brief written and restated to the operator
+    notes: |
+      Use this pipeline when the video depends on reusable characters who act: cartoon shorts, mascot
+      explainers, music-led character scenes, dialogue between simple characters. One-off motion
+      graphics with no acting belong in `animation`; a presenter with lip sync belongs in
+      `avatar-spokesperson`. Facet has no character rigging tools yet: characters are authored by
+      hand as SVG rigs animated with GSAP in HyperFrames, or in a bespoke Remotion composition. Say so
+      and set the expectation: local rigged motion, not frame-by-frame traditional animation.
+
+  - id: research
+    role: researcher
+    consumes: [brief]
+    produces: [research_brief]
+    approval: false
+    needs: []
+    review_focus:
+      - The reference style and technique are researched when a reference exists
+      - At least 3 comparable examples or techniques summarised
+      - Rigged local animation is separated from frame-by-frame traditional animation
+    success:
+      - research_brief with technique notes, reusable motions and feasibility
+    notes: |
+      Identify what the reference actually uses: rigged animation, frame-by-frame drawing, generated
+      video, moving stills, or a mix. Research 3 to 5 examples or techniques. List the reusable
+      motions the story needs (walk cycle, blink, head turn, reach, wing flap, squash and stretch,
+      camera pan and parallax, particles or weather) and separate what can be built locally from what
+      needs manual illustration or a larger asset library. When the reference is hand-drawn frame by
+      frame, say so: an inspired rigged style is possible, an exact match is not.
+
+  - id: proposal
+    role: director
+    consumes: [brief, research_brief]
+    produces: [proposal_packet, review]
+    approval: true
+    needs: [image_generation, voice, music, composition]
+    review_focus:
+      - Concepts differ and none copies a reference
+      - Character count, action complexity and reuse strategy are explicit
+      - Both runtimes were presented when both are installed
+      - Real motion is kept; no still-image or FFmpeg-only fallback for acting
+      - A sample is planned before full production
+    success:
+      - proposal_packet with the selected concept's characters, rig complexity, reuse strategy and runtime
+      - The operator approved the concept, the plan and the sample
+    notes: |
+      - Each concept states its characters and roles, visual style, action complexity, rig reuse
+        strategy, audio architecture (music only, narrator, character dialogue, narrator plus
+        character sounds), music plan, runtime and an honest limitation note.
+      - Engine: HyperFrames when the scene is SVG and GSAP heavy and benefits from web-native
+        authoring with lint and validate; Remotion when the final needs React-rendered scenes,
+        captions and audio in one pass. FFmpeg is never the main runtime for character acting. The
+        mode is atelier.
+      - Sample first: 10 to 15 seconds with one main character, one expression change, one body
+        action, one camera or background treatment and one audio cue, approved before any further
+        assets.
+      - Rendering costs nothing; authoring is the cost. Say how much hand-building the concept needs.
+
+  - id: script
+    role: writer
+    consumes: [brief, proposal_packet, research_brief]
+    produces: [script, review]
+    approval: true
+    needs: [studio_checks]
+    review_focus:
+      - The script is written as action beats, not only narration
+      - The audio architecture is locked
+      - Every emotional turn can be shown with poses and actions
+    success:
+      - script with character beats, required emotions and required actions
+      - The operator approved the script
+    notes: |
+      For each beat, say what changes on screen: emotion, gaze, body pose, a prop, the camera, the
+      environment. Short visual beats with readable holds. Dialogue short enough for simple mouth
+      shapes. Music-led scenes need stronger physical acting notes. Avoid actions that would need many
+      unique drawn poses unless the operator approved that work.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, proposal_packet]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, image_generation]
+    review_focus:
+      - Each character has a distinct role, silhouette, emotional range and action list
+      - The rig has a pivot for every moving part and named poses for every required action
+      - Each scene has characters, actions, framing, background and effects
+      - Scene complexity fits the approved sample
+    success:
+      - scene_plan records the character designs, the rig plan and the scenes
+      - The operator approved the characters, the rig plan and the scenes
+    notes: |
+      This stage carries the character design and the rig plan before the scenes.
+      - Characters: one or two is the sweet spot. For each: id, role, body type, silhouette, style
+        anchors, the minimum emotional range and action list the story needs, the views needed (keep
+        to one or two; each view multiplies the work), props worn or carried.
+      - Rig: parts (body, head, eyes and pupils, brows, mouth shapes, limbs or wings, tail,
+        accessories, props), a pivot for every moving part, layer order, limits that stop limbs
+        bending impossibly, named poses for the approved scenes, and action cycles only when reused
+        at least twice or central to the story. Differences between characters are data, not
+        separate code. Call risky motions out now.
+      - Scenes: characters, emotional beat, action sequence, framing, background, props, effects,
+        assets, transitions. Prefer few strong shots (establish, action, reaction, resolution); avoid
+        many views and physical contact between characters unless approved.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script, proposal_packet]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [image_generation, image_stock, voice, music]
+    review_focus:
+      - Character parts, backgrounds, props, audio and effects are linked to scenes
+      - Prompts and providers are recorded for generated parts
+      - Missing rig parts are reported as blockers, not hidden
+    success:
+      - asset_manifest lists every part the rig needs, each existing on disk
+      - The approved sample exists
+    notes: |
+      Produce only the parts the rig plan needs, each moving part separate on a transparent
+      background, organised per character (parts, poses, previews) under `assets/images/`. Record
+      prompts, seeds and providers. Build the small preview (the sample) before expanding.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks]
+    review_focus:
+      - Acting beats and emotions stay readable
+      - Pose changes have anticipation, holds and follow-through
+      - The runtime is carried unchanged from the proposal
+    success:
+      - Every scene has timed actions, each mapped to a pose, cycle or effect the composition implements
+    notes: |
+      Most acting beats run anticipation, action, hold or reaction, settle. Holds are acting; do not
+      animate everything continuously. Align mouth and gesture beats to the dialogue or the music, and
+      keep the action density readable.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, audio, captions]
+    review_focus:
+      - The runtime used is the runtime locked at the proposal
+      - HyperFrames work passes lint and validate before the render
+      - No silent downgrade to still-image motion
+    success:
+      - render_report with the output path, profile and duration
+    notes: |
+      Before the full render, check frames at the opening, middle and end: characters visible, motion
+      present between frames, no rig breaks (detached limbs, wrong layer order, parts popping).
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief, proposal_packet]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Characters stay consistent in proportion, colour and silhouette
+      - Poses and emotions read clearly; holds are kept
+      - No simultaneous action that cannot be read
+      - Atelier work passes the distinctness questions
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, proposal_packet]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis]
+    review_focus:
+      - Metadata describes the treatment honestly
+      - Poster frame shows the main character's emotion
+      - Limitations stated in the delivery notes
+    success:
+      - publish_log records the delivery package
+      - The operator accepted the delivery
+    notes: |
+      Describe the actual treatment (rigged character animation rendered with HyperFrames or Remotion).
+      Label a sample as a sample. A reference-inspired piece describes its inspiration without
+      claiming to duplicate it.

@@ -1,0 +1,281 @@
+name: screen-demo
+title: Screen demo
+summary: >-
+  A product or software demonstration that teaches one workflow or proves one
+  result: a real screen recording polished with zooms, callouts and captions,
+  or synthetic terminal, screenshot and interface scenes paced to narration.
+category: screen
+starts_from: [footage, product, website, script]
+stance: product
+delivery_promises: [screen_demo]
+renderer_families: [screen-demo, product-reveal]
+runtimes: [remotion, hyperframes, ffmpeg]
+modes: [templated, atelier]
+styles:
+  recommended: [minimalist-diagram, clean-professional]
+  also: [premium-minimalist]
+reference_input: false
+
+structures:
+  - id: task-tutorial
+    title: Task tutorial
+    use_when: >-
+      The viewer wants to do something: install, configure, deploy, fix.
+      Show the result first, then the steps.
+    beats:
+      - id: result-first
+        share: 0.08
+        purpose: The finished result on screen in the first seconds.
+        scenes: [video, screenshot_scene, hero_title]
+      - id: setup
+        share: 0.10
+        purpose: What we will do and what is needed before starting.
+        scenes: [text_card, screenshot_scene, terminal_scene]
+      - id: steps
+        share: 0.62
+        purpose: One block per real step, each titled, the key action zoomed or highlighted.
+        scenes: [video, terminal_scene, screenshot_scene, callout, section_title]
+      - id: verify
+        share: 0.12
+        purpose: The result at normal speed, proving it works.
+        scenes: [video, screenshot_scene, terminal_scene]
+      - id: recap
+        share: 0.08
+        purpose: The steps in one line and where to go next.
+        scenes: [text_card]
+  - id: feature-showcase
+    title: Feature showcase
+    use_when: >-
+      A product or feature must prove its promise through what it visibly does.
+    beats:
+      - id: hook
+        share: 0.08
+        purpose: The outcome the feature delivers, in one frame.
+        scenes: [video, screenshot_scene, hero_title]
+      - id: problem
+        share: 0.12
+        purpose: The user problem, shown or stated in a few words.
+        scenes: [text_card, screenshot_scene, comparison]
+      - id: feature
+        share: 0.45
+        purpose: The feature in action along a coherent user journey.
+        scenes: [video, screenshot_scene, callout, terminal_scene]
+      - id: proof
+        share: 0.20
+        purpose: The result that proves the promise, at real speed, with a number if there is one.
+        scenes: [video, stat_card, comparison]
+      - id: call-to-action
+        share: 0.15
+        purpose: What to do next and where.
+        scenes: [text_card, hero_title]
+  - id: troubleshooting
+    title: Troubleshooting
+    use_when: >-
+      Reproduce a problem, find the cause, fix it and verify the fix.
+    beats:
+      - id: symptom
+        share: 0.12
+        purpose: The error or symptom exactly as the viewer meets it.
+        scenes: [video, terminal_scene, screenshot_scene]
+      - id: reproduce
+        share: 0.20
+        purpose: The steps that trigger it.
+        scenes: [video, terminal_scene]
+      - id: cause
+        share: 0.20
+        purpose: Why it happens, highlighted where it shows.
+        scenes: [callout, screenshot_scene, terminal_scene]
+      - id: fix
+        share: 0.33
+        purpose: The fix, step by step.
+        scenes: [video, terminal_scene, screenshot_scene]
+      - id: verify
+        share: 0.15
+        purpose: The symptom gone, at normal speed.
+        scenes: [video, terminal_scene, text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief, source_media_review]
+    approval: true
+    needs: [analysis, capture, transcription]
+    review_focus:
+      - The brief says what the demo teaches or proves, in one workflow
+      - The production mode is chosen and realistic
+      - Platform and duration fit the density of the interface
+      - Where attention needs help (zooms, callouts) is identified
+    success:
+      - brief and, for recordings, source_media_review written
+      - The operator approved the brief, the mode and the plan
+    notes: |
+      - Choose the production mode with one question: can every command and its output be predicted
+        before filming?
+        - Yes, and it is a command line (install, configure, git, build): synthetic `terminal_scene`.
+          Deterministic, private, and each command lands on its narration line.
+        - A web or app interface that can be shown as stills: `screenshot_scene` from screenshots the
+          operator supplies or that you take with the host's browser tools.
+        - A custom interface best rebuilt in HTML: HyperFrames (see
+          `guidance/vendor/website-to-video/SKILL.md`).
+        - No, it is live behaviour in a real app: a real screen recording. The `capture` capability
+          may be unavailable; then the operator records the screen and supplies the file.
+        A rebuilt or illustrated interface is labelled as illustration, never passed off as a real capture.
+      - Archetype: tutorial, feature showcase, troubleshooting, walkthrough or comparison.
+      - Length: 30 to 60 s for a quick tip or a feature reveal; 60 to 120 s for a focused walkthrough
+        or fix; 120 to 300 s for a chaptered tutorial. Default to the shortest that still teaches.
+        A seven-minute recording is not a seven-minute deliverable.
+      - Frame by interface density: dense desktop interfaces stay 16:9 or 1:1; 9:16 only when the
+        active area survives the crop.
+      - For a recording, note the software shown, the single workflow, the critical interactions,
+        dead time (installs, builds, loading, typing) and whether there is a voiceover.
+      - Engine by mode: a recording uses Remotion (capture plus overlays) or FFmpeg (plain cut); the
+        terminal uses Remotion; a custom interface can go either way, so present both when both are
+        installed.
+
+  - id: script
+    role: writer
+    consumes: [brief, source_media_review]
+    produces: [script, review]
+    approval: true
+    needs: [transcription, studio_checks]
+    review_focus:
+      - Any voiceover is transcribed accurately
+      - Key actions are annotated with timestamps
+      - Sections follow the real workflow steps
+      - Narration matches what is on screen
+    success:
+      - script with one section per step, timed to the actions
+      - The operator approved the script
+    notes: |
+      - Voiced recording: transcribe, tighten and keep the speaker's phrasing. Silent recording: write
+        narration, or a text-led version with step labels if no voice is configured; never write a
+        script that depends on a voice you do not have.
+      - Map the actions: task boundaries, clicks worth highlighting, typing to slow down, waits to
+        speed up or cut, and the result moment, which stays in real time.
+      - One section per real step ("Paste the API token"). Each says what happens and why it matters.
+        Narrate intent and effect, not the cursor.
+      - Speed plan: 0.75 to 1x for a key click or result; 1.5 to 2x for routine typing and
+        navigation; 3 to 6x for installs, builds and loading; cut idle waits. Never speed up the
+        proof.
+      - Name software, commands and interface elements exactly.
+      - Terminal scenes: commands and output are paced across the whole scene, typing as their line
+        is spoken; a terminal that finishes early and sits frozen fails.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, brief, source_media_review]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, analysis]
+    review_focus:
+      - Zooms and crops serve legibility and keep the target readable
+      - Callouts do not cover the interface they point at
+      - Pacing lets the viewer follow the workflow
+      - Sensitive data has a planned mask
+    success:
+      - scene_plan gives every key step a scene, with crops, callouts and speed treatment
+      - The operator approved the scene plan
+    notes: |
+      - Guide attention, do not add motion: zoom when the viewer must read or find something, hold
+        steady while they take it in, return wide between major steps.
+      - Zoom levels: terminal or code 1.5 to 2.2x; a small button or icon 2 to 3x; a dialog 1.4 to
+        2x, whole; a full-page result 1 to 1.3x. Never crop below half the source resolution.
+      - Callouts: highlight box, arrow, step label, keystroke badge, mask. At most two at once; in
+        just before the action, out soon after; a highlight or a zoom, rarely both.
+      - Mask keys, tokens, emails and personal data wherever they appear, even in passing frames.
+      - Note per step which frame shapes stay readable. If a step cannot survive 9:16, say so and
+        ship landscape, or plan a separate simplified vertical cut.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [voice, captions, capture, image_stock]
+    review_focus:
+      - Subtitles exist and match the speech timing
+      - A small reusable overlay kit covers the planned callouts
+      - Audio is clean enough to follow; narration fits the actions
+    success:
+      - asset_manifest lists the recording or scenes, subtitles, overlays and narration
+      - All paths resolve
+    notes: |
+      Utility over decoration: subtitles always; clean primary audio; one overlay kit reused across
+      scenes; at most an intro and an outro card. Show the hero step's sample first. Subtitles in high
+      contrast, phrase by phrase, never over the text the viewer must read. Noise reduction is not
+      available in this release: if keyboard or room noise is heavy, say so and offer a re-recording
+      or new narration. Terminal scenes: generate the narration first, then pace the
+      `terminal_scene` steps to its `narration_timing`.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing]
+    review_focus:
+      - Zooms are smooth and few; no constant motion
+      - Dead time is cut or sped up
+      - Callouts and captions are timed to the narration and do not collide
+    success:
+      - edit_decisions covers the timeline with no gaps
+      - Dead time is under 10% of the output
+    notes: |
+      Build in this order: cut dead time, apply speed, place overlays, set captions, set audio. Show
+      useful motion or the result within the first seconds; no cut mid-word or before the payoff;
+      mute or lower the noise of sped-up passages; music only if it stays out of the instruction's way.
+      Retime captions after every speed change.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, editing, audio, captions]
+    review_focus:
+      - Interface text readable at the output size after crops and scaling
+      - Audio clear, no harsh noise at speed boundaries
+      - The runtime used is the runtime locked at intake
+      - HyperFrames work passes lint and validate before the render
+    success:
+      - render_report with every output and its frame size
+    notes: |
+      Encode for text: sharp scaling and a generous bitrate, never low social defaults; keep a
+      higher resolution when the source is 4K and the text is small. Order: trims and speed, crop and
+      framing, masks and overlays, captions, mix.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Every interface text the viewer needs is readable
+      - Crops show the intended element; masks cover sensitive data
+      - Narration matches the on-screen action
+      - Illustrated or rebuilt interface is labelled as such
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis, captions]
+    review_focus:
+      - Metadata names the real tool, task and outcome
+      - Chapters match the rendered steps
+      - Thumbnail shows the result state
+    success:
+      - publish_log records the delivery package
+      - The operator accepted the delivery
+    notes: |
+      Titles join task, tool and outcome ("Fix CORS in React and Express"). Keywords come from
+      software names, commands, exact error text and outcome words. Chapters follow the steps,
+      checked against the render. The thumbnail shows the result state on the recognisable tool
+      surface with two to four words. For developer content, include the commands shown and the
+      versions used.

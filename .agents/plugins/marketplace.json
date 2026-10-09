@@ -1,0 +1,22 @@
+{
+  "name": "facet",
+  "interface": {
+    "displayName": "Facet"
+  },
+  "plugins": [
+    {
+      "name": "facet",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/kayiik/facet.git",
+        "path": "plugins/codex",
+        "ref": "v0.0.1"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,254 @@
+name: talking-head
+title: Talking head
+summary: >-
+  Raw footage of a person speaking becomes a tight, captioned video: dead air
+  and false starts removed, supporting graphics timed to the words, music
+  under the voice, framed for each platform.
+category: footage
+starts_from: [footage]
+stance: editorial
+delivery_promises: [source_led]
+renderer_families: [presenter]
+runtimes: [remotion, ffmpeg]
+modes: [templated]
+styles:
+  recommended: [clean-professional]
+  also: [premium-minimalist]
+reference_input: false
+
+structures:
+  - id: keep-the-talk
+    title: Keep the talk
+    use_when: >-
+      The recording already has a good order; the job is to tighten it and
+      support it with graphics.
+    beats:
+      - id: opening-line
+        share: 0.08
+        purpose: Start on the speaker's first strong sentence, not on a greeting or a settling-in pause.
+        scenes: [video, text_card]
+      - id: context
+        share: 0.17
+        purpose: Who is speaking and why it matters; a lower third names them.
+        scenes: [video, callout]
+      - id: body
+        share: 0.60
+        purpose: The substance, with graphics on the numbers, terms and comparisons as they are said.
+        scenes: [video, stat_card, callout, comparison, bar_chart]
+      - id: close
+        share: 0.15
+        purpose: The takeaway and the call to action in the speaker's own words.
+        scenes: [video, text_card]
+  - id: cold-open
+    title: Cold open
+    use_when: >-
+      The strongest line comes late in the recording. Lift it to the front,
+      then return to the start, keeping its meaning and context.
+    beats:
+      - id: cold-open
+        share: 0.10
+        purpose: The best complete line from later in the talk, intact.
+        scenes: [video]
+      - id: intro
+        share: 0.10
+        purpose: The speaker and the subject, quickly.
+        scenes: [video, section_title]
+      - id: body
+        share: 0.65
+        purpose: The talk in order, tightened, with supporting graphics.
+        scenes: [video, stat_card, callout, kpi_grid]
+      - id: payoff
+        share: 0.15
+        purpose: Where the cold-open line lands in context, then the close.
+        scenes: [video, text_card]
+  - id: numbered-points
+    title: Numbered points
+    use_when: >-
+      The speaker gives tips, steps or reasons; each point becomes a titled
+      block.
+    beats:
+      - id: hook
+        share: 0.08
+        purpose: The promise of the list in one line.
+        scenes: [video, hero_title]
+      - id: points
+        share: 0.77
+        purpose: One block per point, each opened by a section title and kept to its essentials.
+        scenes: [video, section_title, callout, stat_card]
+      - id: recap
+        share: 0.15
+        purpose: The points in one breath and the call to action.
+        scenes: [video, text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief, source_media_review]
+    approval: true
+    needs: [analysis, transcription]
+    review_focus:
+      - The brief reflects what is actually in the footage
+      - The footage has usable audio; its quality risks are recorded
+      - Platform and duration target are realistic
+      - A transcript exists or a way to get one is agreed
+    success:
+      - brief and source_media_review written, referring to the supplied footage
+      - The operator approved the brief and the plan
+    notes: |
+      - Probe the footage before anything else: no audio track means this pipeline cannot run.
+        Note noise, level, framing, background, light and where the speaker sits in the frame. A
+        recording more than three times the target length needs heavy selection; say so.
+      - The transcript drives everything downstream. The `transcription` capability may be
+        unavailable: ask for a transcript or subtitle file the operator has (from the recording app or
+        the platform's captions), and do not plan cuts or captions without one.
+      - Engine: Remotion with `TalkingHead` renders the footage, the graphics and word captions in one
+        pass; FFmpeg cuts the footage and burns plain subtitles. HyperFrames is not used here; say so
+        when it is installed.
+      - Take the look from the footage, the speaker and the audience; `clean-professional` is the
+        safe fallback, not the default answer.
+
+  - id: script
+    role: writer
+    consumes: [brief, source_media_review]
+    produces: [script, review]
+    approval: true
+    needs: [transcription]
+    review_focus:
+      - The transcript is accurate where it matters (names, numbers, terms)
+      - Section boundaries follow topic changes
+      - Timestamps match the speech
+      - Every cut keeps the speaker's meaning
+    success:
+      - script with sections carrying source start and end times and what is kept or cut
+      - The operator approved the script
+    notes: |
+      Build sections from the transcript at topic changes and at pauses over 1.5 s; split anything
+      longer than a minute. Mark dead air, false starts and off-topic passages to cut, and check each
+      against the brief: context that changes the meaning stays. List likely misheard words (names,
+      brands, jargon, split numbers) as corrections and confirm them with the operator.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, brief, source_media_review]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, analysis, editing]
+    review_focus:
+      - The scenes cover the whole kept footage
+      - Graphics are relevant, timed to the words and inside the safe zones
+      - Graphic density 3 to 6 a minute, varied in type
+      - Reframing for other platforms is planned
+    success:
+      - scene_plan with the base scenes, the graphics, the silence plan and the estimated duration
+      - The operator approved the enhancement plan
+    notes: |
+      - Look before planning: sample 5 to 8 frames and find the speaker's position. Graphics go where
+        the face is not: side panels for a centred speaker, the opposite side for an off-centre one;
+        upper and lower thirds are usually safe.
+      - Read the transcript for numbers, comparisons, lists, new terms and topic changes; those are
+        the graphic moments. A term gets a `callout` or `text_card`, a number a `stat_card`, a
+        comparison a `comparison`, data a chart, several numbers a `kpi_grid`, a process a
+        `progress_bar`, a new topic a `section_title`, the speaker's name a lower-third `text_card`.
+      - 3 to 6 graphics a minute, 3 to 5 s each, appearing on the words; never five of one type in a
+        row; a full-frame graphic for one or two seconds at most.
+      - In a 9:16 frame, `comparison` is too wide; use two `stat_card` scenes in turn. `kpi_grid`
+        takes plain numbers only.
+      - Run `silence_cutter` in mark mode (about −35 dB, 0.5 s minimum) to measure dead air and
+        estimate the final length.
+      - Present the plan as a table (time, graphic, content, why) plus the chain: silence removal,
+        speed, captions, music, frame sizes, final length.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script]
+    produces: [asset_manifest]
+    approval: true
+    needs: [captions, music, image_stock, audio]
+    review_focus:
+      - Subtitles match the speech timing and carry the confirmed corrections
+      - Graphic content matches exactly what the speaker says
+      - Music chosen and trimmed to start where its energy fits
+    success:
+      - asset_manifest lists the footage, subtitles, graphics content and music
+      - All paths resolve
+    notes: |
+      Show one sample first: the caption style and the most important graphic. Build subtitles from
+      the transcript's timed segments (`subtitle_gen`), applying the confirmed corrections. Write the
+      transcript timing as a `narration_timing` record (lines from the cues, words spread over each
+      line when the transcript has no word times) so captions and cuts can follow it. Every number
+      on a graphic is checked against the recording.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing]
+    review_focus:
+      - Cuts reference the source within its duration
+      - Captions enabled, at the bottom, clear of the face
+      - Audio configuration complete; music ducked under speech
+      - No join changes what the speaker means
+    success:
+      - edit_decisions covers the full intended duration
+      - The removed silence is reported (seconds and share)
+    notes: |
+      - Silence: `silence_cutter` removing gaps (hard jump cuts, for social) or speeding through them
+        (gentler, for long-form), with about 0.08 s of padding so words are not clipped.
+      - Speed: `video_trimmer` at 1.25 tightens without sounding unnatural; after any speed change,
+        retime every graphic (new time = old time ÷ speed).
+      - Music sits well under the voice; in a reel that alternates speech and showcase clips, music
+        plays only in the chosen sections.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest]
+    produces: [render_report]
+    approval: false
+    needs: [composition, editing, audio, captions]
+    review_focus:
+      - Output plays; duration and frame size as planned
+      - Captions visible at the bottom and never over the face
+      - Speech clear, levels balanced, loudness normalised
+      - The runtime used is the runtime locked at intake
+    success:
+      - render_report with every output, its frame size and duration
+    notes: |
+      Order: cut and speed, then grade (`color_grade`, only if the footage needs it), then reframe,
+      then captions last so they sit in the final frame. Vertical versions are centre-cropped with
+      `source_edit`; check the face stays in frame through the whole clip. With FFmpeg only captions
+      burn in, not the graphics: say so before choosing it. In vertical burns, captions stay in the
+      lower fifth of the frame.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Captions within 0.3 s of the speech and never on the face
+      - Every join keeps the speaker's meaning and context
+      - Graphics accurate and on time; nothing crowds the speaker
+      - Speech intelligible throughout
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis, captions]
+    review_focus:
+      - Metadata complete and true to what is said
+      - Thumbnail shows the speaker cleanly
+      - Every version labelled by platform and frame size
+    success:
+      - publish_log records the delivery package
+      - The operator accepted the delivery
+    notes: |
+      Chapters come from the script sections. Pick a thumbnail frame with a clear, natural
+      expression.

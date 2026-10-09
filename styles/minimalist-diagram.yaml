@@ -1,0 +1,114 @@
+id: minimalist-diagram
+
+identity:
+  name: Minimalist Diagram
+  category: whiteboard
+  mood: focused, technical, precise
+  pace: deliberate
+  best_for: Technical deep dives, architecture explainers, maths and computer science concepts, documentation videos
+
+visual_language:
+  color_palette:
+    primary: ["#1A1A2E", "#16213E"]
+    accent: ["#E94560", "#0F3460"]
+    background: "#FAFAFA"
+    surface: "#FFFFFF"
+    text: "#1A1A2E"
+    muted: "#6B7280"
+  composition: centred with generous margins, whiteboard feel, aligned to a grid
+  texture: subtle paper-like texture; a hand-drawn line quality is optional
+
+typography:
+  headings:
+    font: Inter
+    weight: 600
+    tracking: "0"
+  body:
+    font: Inter
+    weight: 400
+    line_height: 1.7
+  code:
+    font: JetBrains Mono
+    weight: 400
+  stat_card:
+    font: Inter
+    weight: 700
+    size_multiplier: 2.5
+  scale_system: minor_third
+  weight_matrix:
+    title: 700
+    heading: 600
+    body: 400
+    caption: 300
+
+motion:
+  transitions: [cut, fade]
+  camera_moves: [static, zoom-in]
+  animation_style: ease-out, deliberate, no bounce, no overshoot
+  spring:
+    damping: 25
+    stiffness: 150
+    mass: 1
+  pacing_rules:
+    min_scene_hold_seconds: 3.0
+    max_scene_hold_seconds: 15
+    text_card_hold_seconds: 4.0
+    stat_card_hold_seconds: 3.5
+    transition_duration_seconds: 0.5
+  entrance: lines drawn in along their paths, or fade up
+  exit: fade out
+
+audio:
+  voice_style: calm, measured, technical but accessible, like a good lecturer
+  music_mood: minimal ambient, piano or synth pad, barely noticeable
+  music_volume: 0.05
+  sfx_style: soft pen strokes on diagram reveals, a quiet click as nodes connect
+
+asset_generation:
+  image_prompt_prefix: "minimalist line drawing, clean lines, light background, blueprint feel, "
+  image_negative_prompt: colourful, playful, 3d, photorealistic, busy, cluttered
+  diagram_style: thin dark lines on a light background, square nodes, monochrome with one accent
+  consistency_anchors:
+    - "Red (#E94560) is the only accent colour, used for emphasis"
+    - "Light grey (#FAFAFA) backgrounds throughout"
+    - Monochrome diagrams with a single accent highlight
+    - The same line weight in every diagram
+
+overlays:
+  stat_card:
+    bg: "#FFFFFF"
+    border: "#1A1A2E"
+    radius: 2
+    shadow: none
+  key_term:
+    bg: "#FEE2E2"
+    text: "#B91C3C"
+    radius: 2
+  code_block:
+    bg: "#1A1A2E"
+    text: "#D1D5DB"
+    highlight: "#E94560"
+  captions:
+    bg: "rgba(250, 250, 250, 0.9)"
+    text: "#1A1A2E"
+    highlight: "#E94560"
+
+quality_rules:
+  - Contrast at least 7:1 for body text (WCAG AAA)
+  - Outside charts, at most 2 colours on screen, the base and the accent
+  - Diagrams legible at 480p, so no fine detail
+  - Reveal every diagram progressively; never show the whole diagram at once
+  - Hold each diagram step at least 3 s
+  - Every concept gets its own visual; no cramming
+  - Whitespace is content; at least 30% of the frame stays empty
+
+chart_palette:
+  - "#E94560"
+  - "#1A1A2E"
+  - "#0F3460"
+  - "#6B7280"
+
+color_rules:
+  harmony_type: complementary
+  contrast_validation: true
+  colorblind_safe: true

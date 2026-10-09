@@ -1,0 +1,74 @@
+{
+  "schema": "kayiik.facet.bundle/v2",
+  "capability_id": "kayiik.facet",
+  "facet_version": "0.0.1",
+  "adapter_version": "3",
+  "target": "codex",
+  "scope": "plugin",
+  "install_base": "plugin",
+  "install_root": "",
+  "mcp_server": {
+    "name": "facet",
+    "args": [
+      "mcp"
+    ]
+  },
+  "tools": [
+    "audio_mix",
+    "audio_probe",
+    "color_grade",
+    "direct_clip_search",
+    "edge_tts",
+    "elevenlabs_tts",
+    "ffmpeg_caption_burn",
+    "flux_image",
+    "frame_sample",
+    "gflow_image",
+    "gflow_video",
+    "hyperframes_compose",
+    "image_selector",
+    "kling_video",
+    "media_probe",
+    "music_library",
+    "openai_image",
+    "openai_tts",
+    "output_review",
+    "pexels_video",
+    "piper_tts",
+    "pixabay_video",
+    "plan_check",
+    "scene_detect",
+    "script_check",
+    "silence_cutter",
+    "sora_video",
+    "source_edit",
+    "subtitle_gen",
+    "video_compose",
+    "video_selector",
+    "video_stitch",
+    "video_trimmer",
+    "visual_qa",
+    "wikimedia"
+  ],
+  "files": [
+    {
+      "path": ".codex-plugin/plugin.json",
+      "bytes": 1437,
+      "digest": "sha256:e778f80c8a07ad0818d813cf0f99d0b01eefed940e748eb35541f43a7c704ba6",
+      "kind": "plugin"
+    },
+    {
+      "path": ".mcp.json",
+      "bytes": 1483,
+      "digest": "sha256:05faccb5df5a2f3b43d9752550c7ffcdc3a601f5bfa97779687e7821cf6fdf6e",
+      "kind": "mcp"
+    },
+    {
+      "path": "skills/facet/SKILL.md",
+      "bytes": 11052,
+      "digest": "sha256:d0563043adabd3fef15a33edc1d1113edc5c202163b566277fe7fefbd30a6fd4",
+      "kind": "skill"
+    }
+  ],
+  "bundle_digest": "sha256:e1b0eeac04304f25f95c323ed064c3d5b163c1b06e2ba608ccfa8d63579f652a"
+}

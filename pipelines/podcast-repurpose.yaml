@@ -1,0 +1,233 @@
+name: podcast-repurpose
+title: Podcast repurpose
+summary: >-
+  A podcast episode, audio or video, becomes highlight clips, audiograms and
+  quote cards, and optionally a light-touch full-episode companion video, with
+  the original audio kept intact.
+category: repurpose
+starts_from: [audio, footage]
+stance: editorial
+delivery_promises: [source_led]
+renderer_families: [presenter, explainer-teacher]
+runtimes: [remotion, ffmpeg]
+modes: [templated]
+styles:
+  recommended: [clean-professional, flat-motion-graphics]
+  also: []
+reference_input: false
+
+structures:
+  - id: highlight-clip
+    title: Highlight clip
+    use_when: >-
+      A short clip built around one insight, claim or story from the episode.
+    beats:
+      - id: hook
+        share: 0.12
+        purpose: The line that stops the scroll, in the first three seconds, with the speaker named.
+        scenes: [video, image, text_card]
+      - id: setup
+        share: 0.18
+        purpose: Just enough context for a stranger to follow.
+        scenes: [video, image, callout]
+      - id: insight
+        share: 0.50
+        purpose: The idea in the speaker's own words, captioned word by word.
+        scenes: [video, image, callout]
+      - id: payoff
+        share: 0.20
+        purpose: The line that lands it, then the episode reference.
+        scenes: [video, image, text_card]
+  - id: quote-card
+    title: Quote card
+    use_when: >-
+      The episode has a one-liner strong enough to carry a clip on its own.
+    beats:
+      - id: lead-in
+        share: 0.15
+        purpose: Who is speaking and the question they were answering.
+        scenes: [image, text_card]
+      - id: quote
+        share: 0.55
+        purpose: The line, heard and shown in large type.
+        scenes: [callout, image]
+      - id: hold
+        share: 0.30
+        purpose: The line stays up long enough to read twice, with the attribution and the show.
+        scenes: [callout, text_card]
+  - id: episode-companion
+    title: Episode companion
+    use_when: >-
+      A full-episode video for YouTube when the source and assets justify it;
+      light touch, chaptered.
+    beats:
+      - id: cold-open
+        share: 0.03
+        purpose: The best moment of the episode, intact.
+        scenes: [video, image]
+      - id: intro
+        share: 0.04
+        purpose: Show, episode and guests.
+        scenes: [hero_title, image]
+      - id: chapters
+        share: 0.88
+        purpose: The conversation, a chapter card at each topic shift, a graphic only where it clarifies.
+        scenes: [video, image, section_title, callout]
+      - id: outro
+        share: 0.05
+        purpose: Where to listen and what is next.
+        scenes: [text_card]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief, source_media_review]
+    approval: true
+    needs: [analysis, transcription]
+    review_focus:
+      - Source mode and format identified (audio only or video; solo, interview, panel)
+      - Deliverable types and counts are realistic for the episode
+      - Platform targets set
+    success:
+      - brief records the source mode, speakers, deliverable mix and platforms
+      - The operator approved the brief and the plan
+    notes: |
+      - Classify the source: audio only, video podcast, or audio plus stills (cover art, guest
+        photos); and the format: solo, interview, panel, produced show.
+      - Match deliverables to what exists: 3 to 5 highlight clips; 1 to 3 quote cards if the episode
+        has strong one-liners; a full-episode companion only if the source and brand assets justify
+        it. Audio only means no speaker-framed video: say so.
+      - Frames: 9:16 for Shorts, Reels and TikTok; 1:1 for LinkedIn and feeds; 16:9 for a YouTube
+        companion.
+      - Selection and captions need a transcript with speaker labels. The `transcription`
+        capability may be unavailable: ask for one before planning.
+      - Engine: Remotion, with `TalkingHead` for video-podcast clips (`presenter`) and Explainer
+        scenes with word captions for audiograms and quote cards (`explainer-teacher`); FFmpeg for
+        plain cuts. HyperFrames is not used here; say so when it is installed.
+
+  - id: script
+    role: writer
+    consumes: [brief, source_media_review]
+    produces: [script, review]
+    approval: true
+    needs: [transcription]
+    review_focus:
+      - The transcript has trustworthy speaker labels and timestamps
+      - Quotable moments and highlights are identified and ranked
+      - Topic shifts are mapped for chapters
+    success:
+      - script with speaker-labelled, timed sections, ranked highlights and chapter points
+      - The operator approved the selection
+    notes: |
+      Verify the speaker labels early: attribution is part of the content. Look for concise insights,
+      surprising claims, emotional peaks, debates, practical advice and memorable phrasing; judge each
+      on standalone clarity, hook strength, attribution confidence and platform fit. Reject weak
+      highlights rather than padding the batch. Mark topic shifts for the companion's chapters.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, brief]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, analysis, image_stock]
+    review_focus:
+      - Each deliverable's treatment matches the real source (speaker video, audiogram, quote card)
+      - Every clip has a strong standalone opening
+      - The companion stays light and feasible
+    success:
+      - scene_plan covers every deliverable with its treatment, frame and duration
+      - The operator approved the plan
+    notes: |
+      Source-faithful first: speaker footage when it exists; audiogram or quote layouts (the
+      speaker's photo or show art, the line in large type, word captions) when only audio exists; a
+      simple repeatable system when brand assets are thin. Every layout keeps the speaker's name, the
+      subtitle zone, the show's branding and the episode reference. Avoid pretend richness, and do
+      not make every clip the same waveform and logo.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script]
+    produces: [asset_manifest]
+    approval: true
+    needs: [captions, image_stock, music, audio]
+    review_focus:
+      - Subtitles exist for every clip and the companion
+      - Speaker and quote cards match the style and read on a phone
+      - Optional topic graphics are relevant
+    success:
+      - asset_manifest lists every clip's audio range, subtitles, cards and images
+      - All paths resolve
+    notes: |
+      Subtitles for every clip, speaker cards when more than one person speaks, one quote-card
+      template; topic art only where it clarifies. Show the hero clip's sample first. Write each clip's
+      transcript timing as a `narration_timing` record so captions follow the voice. The podcast audio
+      is the product: never re-encode it at a lower quality.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing]
+    review_focus:
+      - Clips open on the hook and the speaker is identified at once
+      - Quote cards and captions appear at the right moments
+      - The companion uses light visuals rather than fake complexity
+    success:
+      - edit_decisions exist for every planned deliverable
+    notes: |
+      Open on the hook, captions from the first word, attribution obvious. Video clips favour framing
+      and reactions; audiograms favour captions, speaker identity and pace; quote cards hold after the
+      line ends so it can be read. The companion uses chapter cards and one recurring system.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest]
+    produces: [render_report]
+    approval: false
+    needs: [composition, audio, captions]
+    review_focus:
+      - All deliverables rendered (clips, quote cards, companion if planned)
+      - Audio quality preserved from the episode
+      - Layouts as planned for each frame shape
+    success:
+      - render_report lists every deliverable
+    notes: |
+      Render the highlight clips first, then the quote cards, then the companion, so the most
+      publishable pieces exist early. Music sparingly, never over speech. Check subtitle sync after
+      the render.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - Every clip stands alone and keeps the speaker's meaning
+      - Speaker attribution is correct
+      - Captions synced and readable on a phone
+      - Audio unchanged in quality
+    success:
+      - final_review covers every deliverable; passes, or passes with recorded warnings after two rounds
+      - Contact sheets and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, brief]
+    produces: [publish_log]
+    approval: true
+    needs: [captions]
+    review_focus:
+      - Every clip points back to the episode
+      - Guest attribution correct; copy written per platform
+      - A posting order is suggested; the companion has chapters
+    success:
+      - publish_log records every deliverable with its copy and order
+      - The operator accepted the delivery
+    notes: |
+      Each piece names the show, the episode and the guest, and links the full episode. Copy: hook-led
+      for Shorts, Reels and TikTok; insight-led for LinkedIn; chapter-rich for the YouTube companion.
+      Release order: the strongest announcement clip, the next-best insight, quote and guest
+      follow-ups, then the rest.

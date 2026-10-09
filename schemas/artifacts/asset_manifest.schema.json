@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/asset_manifest.schema.json",
+  "title": "Facet asset manifest",
+  "description": "Every file the production made, fetched or was given, with its provenance. The producer writes it at the assets stage to artifacts/asset_manifest.json. Downloaded items record their licence, creator and source page; generated items their tool, provider, model, prompt and seed; narration its section, the cues applied, the settings and whether the sample was approved. Every path must exist (check with media_probe). The edit's cuts point at these files, and publish builds the credits and the list of paid calls from them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "assets"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    },
+    "missing": {
+      "description": "Planned assets that do not exist, such as no music source, an unavailable capability or a direction abandoned after three rejected samples, with what replaces each. Record them here rather than discover them at the render.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["need", "reason"],
+        "properties": {
+          "need": {
+            "type": "string"
+          },
+          "scene_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "replacement": {
+            "description": "What is used instead, as agreed with the operator, or none.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "asset": {
+      "description": "One file and where it came from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "path", "source", "scene_id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": ["image", "video", "audio", "narration", "music", "sfx", "diagram", "animation", "3d_asset", "3d_world", "code_snippet", "subtitle", "font", "lut"]
+        },
+        "path": {
+          "description": "Path of the file, relative to the project folder.",
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "description": "supplied: given by the operator. stock: downloaded from a stock or archive service (wikimedia, pexels_video, pixabay_video, direct_clip_search). generated: made by a voice, image or video generation tool. library: a track from the operator's library (music_library). derived: made from other assets, such as a trimmed select, a sampled frame, a caption file or a mix.",
+          "enum": ["supplied", "stock", "generated", "library", "derived"]
+        },
+        "tool": {
+          "description": "The Facet tool that made or fetched the file. Required unless the operator supplied it.",
+          "type": "string"
+        },
+        "provider": {
+          "description": "The provider behind the tool, such as pexels, wikimedia, openai or a local voice.",
+          "type": "string"
+        },
+        "model": {
+          "description": "The model used for generation.",
+          "type": "string"
+        },
+        "paid": {
+          "description": "True when the call that made it may have charged the operator's provider account.",
+          "type": "boolean"
+        },
+        "prompt": {
+          "description": "The prompt sent, for generated items.",
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "scene_id": {
+          "description": "The scene in scene_plan that uses it, or all for narration, music and other assets that span the video.",
+          "type": "string",
+          "minLength": 1
+        },
+        "source_page": {
+          "description": "The page that describes the item at its source, such as the Wikimedia file page or the Pexels video page.",
+          "type": "string"
+        },
+        "original_url": {
+          "description": "The URL the file was downloaded from.",
+          "type": "string"
+        },
+        "creator": {
+          "description": "Author, photographer or uploader, as the source names them.",
+          "type": "string"
+        },
+        "licence": {
+          "description": "Licence name, such as CC BY-SA 4.0, CC0, Pexels License or Pixabay Content License.",
+          "type": "string"
+        },
+        "licence_url": {
+          "description": "URL of the licence text.",
+          "type": "string"
+        },
+        "attribution_required": {
+          "description": "True when the licence requires a credit, as CC BY and CC BY-SA do.",
+          "type": "boolean"
+        },
+        "attribution": {
+          "description": "The credit line to publish, in the form the licence asks for.",
+          "type": "string"
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "resolution": {
+          "description": "Width by height, such as 1920x1080.",
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "quality_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "subtype": {
+          "description": "Finer classification, such as background, hero or texture.",
+          "type": "string"
+        },
+        "generation_summary": {
+          "description": "How the asset was made or found, in a sentence.",
+          "type": "string"
+        },
+        "timing_path": {
+          "description": "Narration: the narration_timing record the voice tool wrote.",
+          "type": "string"
+        },
+        "voice_performance": {
+          "description": "Narration: how the script's voice plan was applied.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "source_section_id": {
+              "type": "string"
+            },
+            "delivery_cues_applied": {
+              "type": "boolean"
+            },
+            "provider_text_used": {
+              "type": "boolean"
+            },
+            "provider_settings": {
+              "description": "The settings sent to the voice tool.",
+              "type": "object",
+              "additionalProperties": true
+            },
+            "sample_approved": {
+              "type": "boolean"
+            },
+            "sample_path": {
+              "type": "string"
+            },
+            "review_notes": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["source"],
+            "properties": {
+              "source": {
+                "enum": ["stock", "generated", "library", "derived"]
+              }
+            }
+          },
+          "then": {
+            "required": ["tool"]
+          }
+        },
+        {
+          "if": {
+            "required": ["source"],
+            "properties": {
+              "source": {
+                "const": "stock"
+              }
+            }
+          },
+          "then": {
+            "required": ["provider", "licence", "source_page"]
+          }
+        },
+        {
+          "if": {
+            "required": ["source"],
+            "properties": {
+              "source": {
+                "const": "generated"
+              }
+            }
+          },
+          "then": {
+            "required": ["provider", "paid"]
+          }
+        }
+      ]
+    }
+  }
+}

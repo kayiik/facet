@@ -1,0 +1,305 @@
+name: cinematic
+title: Cinematic
+summary: >-
+  Mood-led films: trailers, teasers, brand films and dramatic montages built
+  from supplied footage, stock and generated clips, cut to an emotional arc
+  with a consistent grade, music and sound.
+category: cinematic
+starts_from: [topic, product, footage, reference, brief, track]
+stance: cinematic
+delivery_promises: [motion_led, source_led, hybrid]
+renderer_families: [cinematic-trailer, presenter]
+runtimes: [remotion, hyperframes, ffmpeg]
+modes: [templated, atelier]
+styles:
+  recommended: [flat-motion-graphics]
+  also: [premium-minimalist, clean-professional, minimalist-diagram]
+reference_input: true
+
+structures:
+  - id: tension-to-reveal
+    title: Tension to reveal
+    use_when: >-
+      Trailers and teasers: unease builds toward one image that pays it off.
+    beats:
+      - id: hook
+        share: 0.12
+        purpose: An image or sound that should not be there; no logos, no explanation.
+        scenes: [video, image, text_card]
+      - id: escalation
+        share: 0.43
+        purpose: Tension builds; shots shorten, sound rises, title cards stay sparse.
+        scenes: [video, image, text_card]
+      - id: reveal
+        share: 0.25
+        purpose: The payoff image, given room to land; music turns here.
+        scenes: [video, hero_title]
+      - id: landing
+        share: 0.20
+        purpose: The final image, the title and one call to action.
+        scenes: [hero_title, video, text_card]
+  - id: wonder-to-scale
+    title: Wonder to scale
+    use_when: >-
+      Nature, technology, cosmos or brand films that grow from one small detail
+      to something vast.
+    beats:
+      - id: detail
+        share: 0.20
+        purpose: A close, tactile detail that holds attention without context.
+        scenes: [video, image]
+      - id: widen
+        share: 0.30
+        purpose: Pull back step by step; each shot reveals more of the world.
+        scenes: [video, image]
+      - id: scale
+        share: 0.30
+        purpose: The full scale, shown in one held shot or a short crescendo of shots.
+        scenes: [video, stat_card, hero_title]
+      - id: meaning
+        share: 0.20
+        purpose: What it means for the viewer, then the title.
+        scenes: [hero_title, text_card, video]
+  - id: intimacy-to-payoff
+    title: Intimacy to payoff
+    use_when: >-
+      Human-interest brand films and short documentaries: close and personal
+      first, then an earned moment.
+    beats:
+      - id: close
+        share: 0.20
+        purpose: A person in their world, close, at an unguarded moment.
+        scenes: [video, image]
+      - id: routine
+        share: 0.25
+        purpose: The texture of their days; small repeated actions.
+        scenes: [video, image]
+      - id: stakes
+        share: 0.20
+        purpose: What they care about and what could go wrong.
+        scenes: [video, text_card]
+      - id: payoff
+        share: 0.25
+        purpose: The earned moment; the music arrives with it.
+        scenes: [video]
+      - id: landing
+        share: 0.10
+        purpose: A final image and the title.
+        scenes: [hero_title, video]
+
+stages:
+  - id: intake
+    role: producer
+    consumes: []
+    produces: [brief]
+    approval: false
+    needs: []
+    review_focus:
+      - The source reality is explicit (what footage, stills and audio exist)
+      - Whether real motion is required is decided
+      - The emotional arc is stated in plain words
+    success:
+      - brief written and restated to the operator
+    notes: |
+      Classify the source reality: footage only, footage plus stills, still-led, generated support,
+      or mixed. Decide whether motion is a hard requirement: trailers, teasers, hype edits and any
+      piece whose promise depends on moving shots need real motion. Name the delivery shape
+      (teaser, trailer, hero brand film, mood cut, social cutdown) and the emotional arc.
+      "Make it cinematic" alone does not make a piece
+      cinematic: a demo or an explainer that should feel premium stays in its own pipeline. If the
+      source is weak and nothing can be generated, say so now.
+
+  - id: research
+    role: researcher
+    consumes: [brief]
+    produces: [research_brief]
+    approval: false
+    needs: []
+    review_focus:
+      - Visual references are specific and relevant to the mood
+      - Sound and music direction is substantive, not generic
+      - Motion commitment is honest about what is configured
+      - At least 3 genuinely different cinematic directions
+    success:
+      - research_brief with at least 3 directions, each with visual references and audio direction
+      - At least 5 sources with URLs
+    notes: |
+      Research visual and emotional language more than facts (8 to 20 searches): real trailers,
+      brand films and festival pieces on the subject, with what works visually (framing, colour,
+      movement, texture) and emotionally (pacing, reveal); grade and palette references for the
+      mood; music and sound direction (energy and texture, not track names; music-driven or
+      narrated); textures of the subject; camera and editing rhythm for the mood (handheld for raw,
+      steady for contemplative, whip pans for energy); the structure of the delivery shape. Write
+      directions rather than angles: each with a one-sentence emotional pitch, its references, its
+      audio direction and its motion commitment. Make them differ: different arcs, one built on
+      texture and intimacy rather than spectacle, no two with the same camera approach. "Dark and
+      moody" is not a direction; "low-key tungsten light, shallow focus, slow push-ins" is.
+
+  - id: proposal
+    role: director
+    consumes: [brief, research_brief]
+    produces: [proposal_packet, review]
+    approval: true
+    needs: [video_stock, video_generation, image_generation, music, voice, composition]
+    review_focus:
+      - Source mode and emotional arc are clear
+      - Motion-required delivery is identified, with a real motion path
+      - The delivery shape is realistic for the available footage and providers
+      - The treatment is justified, not decorative
+      - Delivery promise and renderer family are explicit and locked
+      - Music plan resolved
+    success:
+      - proposal_packet with at least 3 concepts with different emotional arcs
+      - Delivery promise records whether motion is required and any approved fallback
+      - The operator approved the concept and the plan
+    notes: |
+      - Hooks evoke a feeling, not an information gap: sensory, a shift of scale, an intimate
+        moment, a provocation, a contrast.
+      - Every concept states its arc: tension to reveal, wonder to scale, intimacy to payoff,
+        urgency to resolution, mystery to call to action, stillness to eruption. No two concepts
+        share an arc.
+      - Visual treatment: palette with hex values, lighting (high-key, low-key, natural, golden
+        hour), camera language, texture (grain, clean digital, anamorphic, handheld), title
+        restraint.
+      - A `motion_led` promise forbids a still-led fallback unless the operator approves an animatic
+        as the fallback, in advance.
+      - Family: `cinematic-trailer` (`CinematicRenderer`) for trailers and brand films built from
+        footage and clips; `presenter` when a person on camera carries the piece.
+      - Engine: Remotion for video-led trailers; HyperFrames for kinetic title sequences and
+        typographic launch films; FFmpeg only for a plain cut of source footage.
+      - Grade and music are part of the plan, not finishing touches: music is half the mood.
+      - Mood board with real film stills, two or three palettes, tone and music references. After
+        approval, a 10 to 15 second sample with picture, sound and music.
+
+  - id: script
+    role: writer
+    consumes: [brief, proposal_packet, research_brief]
+    produces: [script, review]
+    approval: true
+    needs: [studio_checks]
+    review_focus:
+      - The beat map escalates cleanly toward the reveal
+      - Dialogue and title cards are sparse and purposeful
+      - Reveal and landing are distinct beats
+    success:
+      - script with a timed beat map, selected lines and title-card copy
+      - The operator approved the script
+    notes: |
+      - Beat map first: hook, escalation, reveal, landing, plus one midpoint turn when the piece runs
+        past about a minute. Never essay-shaped.
+      - Narration, when there is any, runs near 120 words a minute; many cinematic pieces need none.
+      - Source dialogue only as strong standalone lines: declarations, emotional phrases, reveal
+        lines (this needs a transcript).
+      - Title cards: few words, high contrast, precise timing. Title cards and dialogue never say the
+        same thing twice. Mark music turns and silence windows. Do not spend the best moment early.
+
+  - id: scene_plan
+    role: director
+    consumes: [script, proposal_packet]
+    produces: [scene_plan]
+    approval: true
+    needs: [studio_checks, video_stock, video_generation, image_generation, analysis]
+    review_focus:
+      - Hero frames (opening, reveal, final, title moments) are defined
+      - Source-led scenes stay primary when source exists
+      - Transitions and frame shape support the mood
+    success:
+      - scene_plan gives every beat a treatment and an asset path
+      - plan_check passes coverage and the delivery promise
+      - The operator approved the scene plan
+    notes: |
+      Specify every hero frame on all five aspects and anchor identities word for word across shots;
+      one vague hero frame ruins the piece. Source footage leads; generated inserts and title cards
+      bridge, emphasise or fill missing coverage. Keep the transition vocabulary small: hard cut, fade
+      to black, slow dissolve, a restrained push-in. Letterbox only when it helps the picture.
+
+  - id: assets
+    role: producer
+    consumes: [scene_plan, script, proposal_packet]
+    produces: [asset_manifest, narration_timing]
+    approval: true
+    needs: [video_stock, video_generation, image_stock, image_generation, music, sfx, voice]
+    review_focus:
+      - Source selects and support assets are clearly separated
+      - Motion beats use real video clips, never stills substituted
+      - Music, ambience and impacts match the beat map
+      - Generated inserts are few and justified
+    success:
+      - asset_manifest lists every asset with provenance and rights notes
+      - Every motion beat has a clip
+    notes: |
+      Source selects first; prove the source edit works before generating anything. When motion is
+      required, the sample is a generated clip, not a still, and stills never replace a planned
+      shot. Generated inserts fill clear gaps (transitional footage, concept inserts, texture). Hero
+      frame prompts get the three-pass treatment. The audio plan covers the track, ambience,
+      impacts and transition sounds; the `sfx` capability may be unavailable, so use supplied
+      effects or none and say so.
+
+  - id: edit
+    role: editor
+    consumes: [scene_plan, asset_manifest, script, narration_timing]
+    produces: [edit_decisions, review]
+    approval: false
+    needs: [studio_checks, editing]
+    review_focus:
+      - Emotional pacing is preserved
+      - Strong moments are not overcut or covered with inserts
+      - Sound and title cards reinforce the story
+    success:
+      - edit_decisions covers the full runtime
+      - plan_check passes coverage and the delivery promise
+    notes: |
+      Cut by emotion: emphasis, reveal timing, musical turns and visual contrast, not information
+      density. Let a look, a line or a gesture live. Use sound to push between scenes: ambience,
+      impacts, a dropout, a change in the music. No speed ramps or flashy transitions by default.
+
+  - id: compose
+    role: editor
+    consumes: [edit_decisions, asset_manifest, narration_timing]
+    produces: [render_report]
+    approval: false
+    needs: [composition, editing, audio, captions]
+    review_focus:
+      - The grade is consistent across sources and does not damage faces or text
+      - Audio dynamics are controlled and dialogue intelligible
+      - Motion-required delivery was preserved; no still-image fallback
+      - The runtime used is the runtime locked at the proposal
+    success:
+      - render_report with the output path, profile and duration
+    notes: |
+      Grade every source to one look with `color_grade`. Letterbox or 24 fps only when they help. Keep
+      the dynamics: quiet moments, impacts, clear dialogue, controlled swells; a flattened mix kills
+      the mood. If the locked engine or a clip provider fails, stop and ask; never fall back to stills.
+
+  - id: review
+    role: critic
+    consumes: [render_report, edit_decisions, brief, proposal_packet]
+    produces: [final_review, review]
+    approval: false
+    needs: [review, analysis]
+    review_focus:
+      - The mood follows the planned arc; the reveal has room
+      - Opening frame, reveal beat and final landing are strong
+      - Grade consistent; audio dynamic and intelligible
+      - Motion delivered as promised
+    success:
+      - final_review passes, or passes with recorded warnings after two rounds
+      - Contact sheet and evidence saved in review/
+
+  - id: publish
+    role: producer
+    consumes: [render_report, final_review, asset_manifest, proposal_packet]
+    produces: [publish_log]
+    approval: true
+    needs: [analysis]
+    review_focus:
+      - Hero and derivative exports clearly labelled
+      - Metadata matches the tone and distribution intent
+      - Poster frame chosen; sources, licences and paid calls listed
+    success:
+      - publish_log records the delivery package and its metadata
+      - The operator accepted the delivery
+    notes: |
+      Separate the hero film from its derivatives (teaser cut, social cutdown, poster frame) and name
+      each by purpose. Metadata carries the piece's tone: dramatic, premium, mysterious, reflective,
+      urgent.

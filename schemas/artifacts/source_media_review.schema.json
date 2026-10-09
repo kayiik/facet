@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/source_media_review.schema.json",
+  "title": "Facet source media review",
+  "description": "What the operator's supplied footage, audio and images actually contain, written at intake to artifacts/source_media_review.json before any planning, so the plan rests on inspection, never on file names. Inspect each file with media_probe (and audio_probe for sound); for video also scene_detect and frame_sample, and look at the frames.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "files", "summary", "planning_implications"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "files": {
+      "description": "One entry per supplied file. Empty when nothing was supplied or nothing could be inspected; summary then says so plainly.",
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "media_type", "reviewed"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "media_type": {
+            "enum": ["video", "audio", "image"]
+          },
+          "reviewed": {
+            "description": "Always true: the file was inspected, not assumed.",
+            "type": "boolean",
+            "const": true
+          },
+          "technical_probe": {
+            "description": "What media_probe and audio_probe report for the file.",
+            "type": "object",
+            "properties": {
+              "duration_seconds": {
+                "type": "number"
+              },
+              "resolution": {
+                "description": "Width by height, such as 1920x1080.",
+                "type": "string"
+              },
+              "fps": {
+                "type": "number"
+              },
+              "codec": {
+                "type": "string"
+              },
+              "audio_codec": {
+                "type": "string"
+              },
+              "audio_streams": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sample_rate": {
+                "type": "integer"
+              },
+              "channels": {
+                "type": "integer"
+              },
+              "file_size_bytes": {
+                "type": "integer"
+              },
+              "bitrate_kbps": {
+                "type": "number"
+              },
+              "loudness_lufs": {
+                "type": "number"
+              }
+            }
+          },
+          "content_summary": {
+            "description": "What the file contains, described from what you saw and heard.",
+            "type": "string"
+          },
+          "transcript_summary": {
+            "description": "Summary of the speech, when there is speech and a transcript.",
+            "type": "string"
+          },
+          "transcript_path": {
+            "description": "The transcript or subtitle file (SRT or VTT) the operator supplied, or a narration_timing record made from it. Leave it out when there is none, and say in planning_implications what that rules out.",
+            "type": "string"
+          },
+          "representative_frames": {
+            "description": "Paths of sampled frames (video and images).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "quality_risks": {
+            "description": "Problems that affect planning: low resolution, mono or noisy audio, shaky or dark footage, burned-in text, framing that will not survive a vertical crop.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usable_for": {
+            "description": "What the file can do in the production: hero footage, b-roll, background audio and so on.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "moments": {
+            "description": "The strongest complete moments in the file, with the context each needs to stay truthful.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["start_seconds", "end_seconds", "description"],
+              "properties": {
+                "start_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "end_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": {
+                  "type": "string"
+                },
+                "context_needed": {
+                  "description": "What must stay around the moment so its meaning is not changed.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "description": "What the supplied media contains and what it does not, specifically: \"45 s of interview footage, no b-roll, mono audio at 44.1 kHz\", not \"user provided footage\".",
+      "type": "string",
+      "minLength": 1
+    },
+    "planning_implications": {
+      "description": "Concrete constraints and opportunities the proposal, script and scene plan must follow: what the material supports, what it cannot carry, what is missing. Each item is actionable.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

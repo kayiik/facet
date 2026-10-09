@@ -1,0 +1,21 @@
+:root {
+  --facet-begonia: #f36c7a;
+  --facet-green: #10b981;
+  --facet-red: #d92d48;
+
+  --facet-ink: #0f172a;
+  --facet-slate: #475569;
+  --facet-line: #cbd5e1;
+  --facet-canvas: #f8fafc;
+  --facet-white: #ffffff;
+  --facet-black: #000000;
+
+  --facet-wordmark-font: "Space Grotesk", Inter, ui-sans-serif, system-ui,
+    sans-serif;
+  --facet-wordmark-weight: 700;
+
+  --facet-mark-view-box: 0 0 120 120;
+  --facet-mark-tile-size: 58px;
+  --facet-mark-tile-radius: 12px;
+  --facet-mark-tile-offset: 11px;
+}

@@ -1,0 +1,32 @@
+{
+  "id": "CLI-JOURNEY-001",
+  "name": "Installed facet: wire OpenCode, doctor, deterministic render and output review",
+  "description": "Inside the sealed UAT container, against the runtime install.sh installed from the locally built release archive (--components remotion --no-path): facet wire opencode --scope user (verified by an MCP handshake with the wired command), facet doctor, a fixed-input video_compose render with audio, and output_review of the delivered file, plus negative controls. No model calls.",
+  "origin_id": "uat-console",
+  "tier": "core",
+  "policy": "required",
+  "steps": [
+    {
+      "action": "navigate",
+      "target": "/"
+    },
+    {
+      "action": "assert",
+      "target": "[data-uat='installed-version']"
+    }
+  ],
+  "expected_side_effects": [
+    {
+      "service": "custom",
+      "probe_type": "custom",
+      "params": {
+        "command": "node",
+        "args": [
+          "scripts/uat-probe.mjs"
+        ],
+        "expect_exit_code": 0,
+        "timeoutMs": 960000
+      }
+    }
+  ]
+}

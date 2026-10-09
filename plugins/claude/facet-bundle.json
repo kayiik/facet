@@ -1,0 +1,98 @@
+{
+  "schema": "kayiik.facet.bundle/v2",
+  "capability_id": "kayiik.facet",
+  "facet_version": "0.0.1",
+  "adapter_version": "3",
+  "target": "claude",
+  "scope": "plugin",
+  "install_base": "plugin",
+  "install_root": "",
+  "mcp_server": {
+    "name": "facet",
+    "args": [
+      "mcp"
+    ]
+  },
+  "tools": [
+    "audio_mix",
+    "audio_probe",
+    "color_grade",
+    "direct_clip_search",
+    "edge_tts",
+    "elevenlabs_tts",
+    "ffmpeg_caption_burn",
+    "flux_image",
+    "frame_sample",
+    "gflow_image",
+    "gflow_video",
+    "hyperframes_compose",
+    "image_selector",
+    "kling_video",
+    "media_probe",
+    "music_library",
+    "openai_image",
+    "openai_tts",
+    "output_review",
+    "pexels_video",
+    "piper_tts",
+    "pixabay_video",
+    "plan_check",
+    "scene_detect",
+    "script_check",
+    "silence_cutter",
+    "sora_video",
+    "source_edit",
+    "subtitle_gen",
+    "video_compose",
+    "video_selector",
+    "video_stitch",
+    "video_trimmer",
+    "visual_qa",
+    "wikimedia"
+  ],
+  "files": [
+    {
+      "path": ".claude-plugin/plugin.json",
+      "bytes": 569,
+      "digest": "sha256:aa073fc92bba64f9c242bd89f7e14a840ca95788c707a7dd234b8a25f26656d2",
+      "kind": "plugin"
+    },
+    {
+      "path": ".mcp.json",
+      "bytes": 111,
+      "digest": "sha256:24c0ecc0150c031c9d7660a64b2a728c57a96f8a1cf6b50de099f35aa5efbe12",
+      "kind": "mcp"
+    },
+    {
+      "path": "agents/facet-critic.md",
+      "bytes": 4889,
+      "digest": "sha256:c91e007031742df9d7d76426652a3f8b75f869917c9a83cbb1347e225e962f08",
+      "kind": "agent"
+    },
+    {
+      "path": "agents/facet-reference-analyst.md",
+      "bytes": 4207,
+      "digest": "sha256:df9f99089b5613185cf67a592515208ed89a883f8b70d40dba56f627b26a999f",
+      "kind": "agent"
+    },
+    {
+      "path": "agents/facet-researcher.md",
+      "bytes": 3737,
+      "digest": "sha256:1e4a4eed71c86661a95393e9da0b143679caed91ad2c1b1e8c2c8c627984de6d",
+      "kind": "agent"
+    },
+    {
+      "path": "hooks/hooks.json",
+      "bytes": 836,
+      "digest": "sha256:e980becc6699d4041d1fb64a4670b54f35f4e01d4f6fbbd0642f21dc365b640c",
+      "kind": "hook"
+    },
+    {
+      "path": "skills/facet/SKILL.md",
+      "bytes": 11052,
+      "digest": "sha256:d0563043adabd3fef15a33edc1d1113edc5c202163b566277fe7fefbd30a6fd4",
+      "kind": "skill"
+    }
+  ],
+  "bundle_digest": "sha256:9d1c64284e8bde56a16c4f738ecfa4c397918be92cf5b81f0532dd4bfa0fdaa3"
+}

@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/final_review.schema.json",
+  "title": "Facet final review",
+  "description": "The review of the finished video, written by the critic to artifacts/final_review.json. It holds the technical checks from output_review (called with the explicit expected profile, duration and tolerance, codecs, pixel format and audio, frame samples, a contact sheet and narration and caption coverage, with the evidence under review/), what the frames and the sound showed, whether the promise was kept, the critic's judgement, and the operator's approval at delivery. A video whose status is revise or fail is not presented as finished.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "output_path", "status", "checks"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "output_path": {
+      "description": "The rendered file that was reviewed.",
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "description": "pass: ready to present. revise: fixable problems; each fix goes to the stage that can make it, then re-render and review again. fail: critical problems. pass_with_warnings: critical findings still open after the second round, listed in warnings; there is no third round.",
+      "enum": ["pass", "revise", "fail", "pass_with_warnings"]
+    },
+    "round": {
+      "description": "Review round, 1 or 2.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2
+    },
+    "evidence_dir": {
+      "description": "Where output_review saved the evidence, under review/.",
+      "type": "string"
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["technical_probe", "visual_spotcheck", "audio_spotcheck", "promise_preservation", "subtitle_check"],
+      "properties": {
+        "technical_probe": {
+          "description": "The file against its expected profile, from output_review and media_probe.",
+          "type": "object",
+          "properties": {
+            "valid_container": {
+              "type": "boolean"
+            },
+            "duration_seconds": {
+              "type": "number"
+            },
+            "resolution": {
+              "description": "Width by height, such as 1920x1080.",
+              "type": "string"
+            },
+            "fps": {
+              "type": "number"
+            },
+            "codec": {
+              "type": "string"
+            },
+            "pixel_format": {
+              "type": "string"
+            },
+            "has_audio": {
+              "type": "boolean"
+            },
+            "audio_codec": {
+              "type": "string"
+            },
+            "sample_rate": {
+              "type": "integer"
+            },
+            "channels": {
+              "type": "integer"
+            },
+            "file_size_bytes": {
+              "type": "integer"
+            },
+            "assumed": {
+              "description": "Checks given no expectation, which output_review reports as assumed rather than checked.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "visual_spotcheck": {
+          "description": "The contact sheet and a frame from the middle of every scene (frame_sample), looked at one by one.",
+          "type": "object",
+          "properties": {
+            "frames_sampled": {
+              "type": "integer",
+              "minimum": 4
+            },
+            "frame_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "contact_sheet": {
+              "description": "Path of the contact sheet image.",
+              "type": "string"
+            },
+            "black_frames_detected": {
+              "type": "boolean"
+            },
+            "frozen_frames_detected": {
+              "type": "boolean"
+            },
+            "broken_overlays": {
+              "type": "boolean"
+            },
+            "missing_assets": {
+              "description": "Missing, stretched or wrong media, or a wrong background.",
+              "type": "boolean"
+            },
+            "unreadable_text": {
+              "description": "Unreadable, clipped or wrong text.",
+              "type": "boolean"
+            },
+            "captions_in_dead_zone": {
+              "description": "Captions over faces or in a platform's dead zone.",
+              "type": "boolean"
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "audio_spotcheck": {
+          "description": "The sound, listened to.",
+          "type": "object",
+          "properties": {
+            "narration_present": {
+              "type": "boolean"
+            },
+            "narration_complete": {
+              "description": "The narration runs to its last word.",
+              "type": "boolean"
+            },
+            "music_present": {
+              "type": "boolean"
+            },
+            "music_ducked": {
+              "description": "The music is lowered under the voice.",
+              "type": "boolean"
+            },
+            "unexpected_silence": {
+              "type": "boolean"
+            },
+            "clipping_detected": {
+              "type": "boolean"
+            },
+            "mix_intelligible": {
+              "type": "boolean"
+            },
+            "loudness_lufs": {
+              "description": "Integrated loudness of the output.",
+              "type": "number"
+            },
+            "loudness_on_target": {
+              "type": "boolean"
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "coverage": {
+          "description": "Narration and caption coverage of the video, from output_review's coverage check with the timing_path and the captions_path.",
+          "type": "object",
+          "properties": {
+            "narration_coverage_ratio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "caption_coverage_ratio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "gaps": {
+              "description": "Stretches with no narration or no captions where some were expected.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["start_seconds", "end_seconds"],
+                "properties": {
+                  "start_seconds": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "end_seconds": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "kind": {
+                    "enum": ["narration", "captions"]
+                  }
+                }
+              }
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "promise_preservation": {
+          "description": "The delivery promise is visible (a motion-led video moves, a source-led video is led by its source, a data explainer shows its data), the engine and mode used are the locked ones, and nothing was silently downgraded.",
+          "type": "object",
+          "properties": {
+            "delivery_promise_honored": {
+              "type": "boolean"
+            },
+            "renderer_family_used": {
+              "description": "The renderer family that actually ran.",
+              "type": "string"
+            },
+            "render_runtime_used": {
+              "description": "The engine that actually rendered.",
+              "enum": ["remotion", "hyperframes", "ffmpeg"]
+            },
+            "composition_mode_used": {
+              "enum": ["templated", "atelier"]
+            },
+            "runtime_swap_detected": {
+              "description": "True when the engine used differs from the one locked in the plan. A swap the operator did not agree to breaks the plan.",
+              "type": "boolean"
+            },
+            "runtime_swap_check": {
+              "description": "How the engine used was compared with the locked one: ok, detected or skipped, with a short reason.",
+              "type": "string"
+            },
+            "motion_ratio_actual": {
+              "description": "Share of the cuts that are real motion.",
+              "type": "number"
+            },
+            "silent_downgrade_detected": {
+              "type": "boolean"
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "subtitle_check": {
+          "description": "Captions: expected, present, coverage and drift against the narration.",
+          "type": "object",
+          "properties": {
+            "subtitles_expected": {
+              "type": "boolean"
+            },
+            "subtitles_present": {
+              "type": "boolean"
+            },
+            "coverage_ratio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "timing_drift_detected": {
+              "type": "boolean"
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "content_check": {
+          "description": "Facts on screen match the research, supplied speech keeps its meaning and context, and product behaviour shown is real or labelled as illustration.",
+          "type": "object",
+          "properties": {
+            "facts_match_research": {
+              "type": "boolean"
+            },
+            "speech_meaning_kept": {
+              "type": "boolean"
+            },
+            "product_behaviour_real": {
+              "type": "boolean"
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "transcript_comparison": {
+          "description": "Only when a transcript of the output exists: how it compares with the script.",
+          "type": "object",
+          "properties": {
+            "transcript_matches_script": {
+              "type": ["boolean", "null"]
+            },
+            "word_accuracy": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "atelier": {
+          "description": "Atelier work only. Distinctness: could this be any other product's video? Does it reuse a look from an earlier piece? Does each scene have its own primary subject? Does the signature device appear in one or two beats rather than everywhere? A generic piece with recycled scaffolding fails.",
+          "type": "object",
+          "properties": {
+            "could_be_any_product": {
+              "type": "boolean"
+            },
+            "reuses_earlier_look": {
+              "type": "boolean"
+            },
+            "each_scene_own_subject": {
+              "type": "boolean"
+            },
+            "signature_device_limited": {
+              "description": "True when the signature device appears in one or two beats, not as scaffolding.",
+              "type": "boolean"
+            },
+            "stock_reuse_detected": {
+              "description": "True when the bespoke composition imports the stock scene components.",
+              "type": "boolean"
+            },
+            "offending_imports": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string"
+                  },
+                  "import": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "art_direction_declared": {
+              "type": "boolean"
+            },
+            "art_direction": {
+              "type": ["string", "null"]
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "issues_found": {
+      "description": "Every issue across the checks, summarised for the operator.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "description": "Issues left open after the second round, stated to the operator at delivery as known limits.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommended_action": {
+      "description": "present_to_user: present it at delivery. re_render: render again. revise_edit, revise_assets: send back to that stage. re_author: rewrite the atelier composition. block: stop and tell the operator what failed and the options.",
+      "enum": ["present_to_user", "re_render", "revise_edit", "revise_assets", "block", "re_author"]
+    },
+    "judgement": {
+      "description": "The critic's judgement of the video as the audience would see it, against the stance's quality bar and its list of things to avoid.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stance": {
+          "enum": ["explainer", "product", "cinematic", "editorial", "animation"]
+        },
+        "quality_bar_met": {
+          "type": "boolean"
+        },
+        "review_record": {
+          "description": "Path of the critic's review record for this round, such as artifacts/review-review-1.json.",
+          "type": "string"
+        }
+      }
+    },
+    "approval": {
+      "description": "The operator's acceptance at the delivery approval in publish.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "description": "pending until the operator answers.",
+          "enum": ["pending", "approved", "approved_with_changes", "rejected"]
+        },
+        "user_notes": {
+          "description": "The operator's answer and any changes asked for, in their words.",
+          "type": "string"
+        },
+        "approved_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,444 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/pipeline.schema.json",
+  "title": "Facet pipeline",
+  "description": "A production method: where the material comes from, how it is transformed, the stages that run it and the story structures that suit it. One file per pipeline in pipelines/, named <name>.yaml. Facet parses it strictly: unknown keys are refused. Rules JSON Schema cannot express: name equals the file name; stage ids are unique and in production order; in every structure the beat shares sum to 1.0 (within 0.02).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "title",
+    "summary",
+    "category",
+    "starts_from",
+    "stance",
+    "delivery_promises",
+    "renderer_families",
+    "runtimes",
+    "modes",
+    "styles",
+    "reference_input",
+    "structures",
+    "stages"
+  ],
+  "properties": {
+    "name": {
+      "description": "Pipeline id. Must equal the file name without .yaml.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "title": {
+      "description": "Human title.",
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "description": "One or two sentences on what this method makes.",
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "description": "Kind of production method.",
+      "enum": [
+        "generated",
+        "animation",
+        "cinematic",
+        "documentary",
+        "footage",
+        "screen",
+        "avatar",
+        "localization",
+        "hybrid",
+        "repurpose"
+      ]
+    },
+    "starts_from": {
+      "description": "What the operator can bring to start this method.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "topic",
+          "product",
+          "website",
+          "footage",
+          "audio",
+          "track",
+          "reference",
+          "script",
+          "brief"
+        ]
+      }
+    },
+    "stance": {
+      "description": "Default producer stance. The producer may lead with another stance when the video's main job calls for it.",
+      "$ref": "#/$defs/stance"
+    },
+    "delivery_promises": {
+      "description": "Kinds of delivery this method can promise, usual first.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/deliveryPromise"
+      }
+    },
+    "renderer_families": {
+      "description": "Creative grammars for templated rendering, usual first.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/rendererFamily"
+      }
+    },
+    "runtimes": {
+      "description": "Usable render runtimes, usual first.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "remotion",
+          "hyperframes",
+          "ffmpeg"
+        ]
+      }
+    },
+    "modes": {
+      "description": "Usable composition modes, usual first.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "templated",
+          "atelier"
+        ]
+      }
+    },
+    "styles": {
+      "description": "Styles that suit this method.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recommended",
+        "also"
+      ],
+      "properties": {
+        "recommended": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/style"
+          }
+        },
+        "also": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/style"
+          }
+        }
+      }
+    },
+    "reference_input": {
+      "description": "Whether a reference video ('make something like this') is a supported starting point.",
+      "type": "boolean"
+    },
+    "structures": {
+      "description": "Story structures for this kind of video. Beat shares sum to 1.0 (within 0.02).",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/structure"
+      }
+    },
+    "stages": {
+      "description": "Stages in production order. Stage ids are unique.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/stage"
+      }
+    }
+  },
+  "$defs": {
+    "stance": {
+      "enum": [
+        "explainer",
+        "product",
+        "cinematic",
+        "editorial",
+        "animation"
+      ]
+    },
+    "deliveryPromise": {
+      "enum": [
+        "motion_led",
+        "source_led",
+        "data_explainer",
+        "teacher_explainer",
+        "screen_demo",
+        "avatar_presenter",
+        "hybrid",
+        "localization"
+      ]
+    },
+    "rendererFamily": {
+      "description": "explainer-data, explainer-teacher, product-reveal, screen-demo and animation-first render with Explainer; cinematic-trailer and documentary-montage with CinematicRenderer; presenter with TalkingHead.",
+      "enum": [
+        "explainer-data",
+        "explainer-teacher",
+        "product-reveal",
+        "screen-demo",
+        "animation-first",
+        "cinematic-trailer",
+        "documentary-montage",
+        "presenter"
+      ]
+    },
+    "style": {
+      "enum": [
+        "clean-professional",
+        "flat-motion-graphics",
+        "minimalist-diagram",
+        "premium-minimalist",
+        "anime-ghibli"
+      ]
+    },
+    "stageId": {
+      "enum": [
+        "intake",
+        "research",
+        "proposal",
+        "script",
+        "scene_plan",
+        "assets",
+        "edit",
+        "compose",
+        "review",
+        "publish"
+      ]
+    },
+    "role": {
+      "enum": [
+        "producer",
+        "researcher",
+        "director",
+        "writer",
+        "art_director",
+        "editor",
+        "sound_designer",
+        "critic"
+      ]
+    },
+    "artifact": {
+      "description": "Record name; each is schemas/artifacts/<name>.schema.json.",
+      "enum": [
+        "brief",
+        "research_brief",
+        "source_media_review",
+        "video_analysis_brief",
+        "proposal_packet",
+        "script",
+        "scene_plan",
+        "asset_manifest",
+        "edit_decisions",
+        "render_report",
+        "final_review",
+        "publish_log",
+        "narration_timing",
+        "review"
+      ]
+    },
+    "capability": {
+      "description": "Capability ids as reported by the capabilities planning tool.",
+      "enum": [
+        "voice",
+        "image_stock",
+        "image_generation",
+        "video_stock",
+        "video_generation",
+        "music",
+        "sfx",
+        "transcription",
+        "capture",
+        "avatar",
+        "composition",
+        "editing",
+        "audio",
+        "captions",
+        "analysis",
+        "review",
+        "studio_checks"
+      ]
+    },
+    "sceneType": {
+      "description": "Explainer scene types, plus the media cuts image and video.",
+      "enum": [
+        "text_card",
+        "hero_title",
+        "section_title",
+        "callout",
+        "stat_card",
+        "stat_reveal",
+        "kpi_grid",
+        "progress_bar",
+        "comparison",
+        "bar_chart",
+        "line_chart",
+        "pie_chart",
+        "terminal_scene",
+        "screenshot_scene",
+        "anime_scene",
+        "provider_chip",
+        "image",
+        "video"
+      ]
+    },
+    "structure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "use_when",
+        "beats"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "use_when": {
+          "type": "string",
+          "minLength": 1
+        },
+        "beats": {
+          "description": "Beats in order. Shares sum to 1.0 (within 0.02).",
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/beat"
+          }
+        }
+      }
+    },
+    "beat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "share",
+        "purpose",
+        "scenes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$"
+        },
+        "share": {
+          "description": "Fraction of the running time.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenes": {
+          "description": "Scene types that suit this beat.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/sceneType"
+          }
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "consumes",
+        "produces",
+        "approval",
+        "needs",
+        "review_focus",
+        "success"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stageId"
+        },
+        "role": {
+          "description": "The role that runs the stage.",
+          "$ref": "#/$defs/role"
+        },
+        "consumes": {
+          "description": "Records the stage reads.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
+        },
+        "produces": {
+          "description": "Records the stage writes.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
+        },
+        "approval": {
+          "description": "True: the producer presents the stage's record and stops for the operator's approval before the next stage.",
+          "type": "boolean"
+        },
+        "needs": {
+          "description": "Capabilities the stage uses; pipeline_describe reports their live availability.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/capability"
+          }
+        },
+        "review_focus": {
+          "description": "What the stage's review checks for this kind of video.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "success": {
+          "description": "Conditions that must hold before the stage is done.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "notes": {
+          "description": "Pipeline-specific guidance for this stage (Markdown).",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/narration_timing.schema.json",
+  "title": "Facet narration timing",
+  "description": "When each narration line and word is spoken. The voice tools (edge_tts, piper_tts, openai_tts, elevenlabs_tts) write it when called with lines and a timing_path: one clip per line, each timed and joined with its pause into one narration file. edge_tts gives real word timings; the other voices spread the words over each line. Supplied speech has no synthesis timing, so write its transcript in this shape yourself: source transcript, one line per transcript segment, and the words spread over each line when the transcript has no word times. Cuts timed by lines, the composition's captions, subtitle_gen, plan_check and output_review follow it. Times are seconds from the start of the file.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["source", "file", "duration_seconds", "lines", "words"],
+  "properties": {
+    "source": {
+      "description": "synthesis: written by a voice tool. transcript: the timing of supplied speech, taken from its transcript.",
+      "enum": ["synthesis", "transcript"]
+    },
+    "voice": {
+      "description": "Who spoke the narration: the voice tool and voice for synthesis (required then); for a transcript, the speaker when known.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "tool": {
+          "description": "The voice tool.",
+          "type": "string"
+        },
+        "voice": {
+          "description": "The voice name or id the tool used; for a transcript, the speaker.",
+          "type": "string"
+        }
+      }
+    },
+    "duration_seconds": {
+      "description": "Length of the narration file.",
+      "type": "number",
+      "minimum": 0
+    },
+    "file": {
+      "description": "The narration audio: the assembled file for synthesis, the supplied recording for a transcript.",
+      "type": "string",
+      "minLength": 1
+    },
+    "lines": {
+      "description": "The lines in order.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "text", "start", "end"],
+        "properties": {
+          "id": {
+            "description": "The line id from the script (l1, l2 and so on); cuts name it in lines.",
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string"
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end": {
+            "type": "number",
+            "minimum": 0
+          },
+          "file": {
+            "description": "The line's own clip, for synthesis.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "words": {
+      "description": "Every word in order, with its time; the composition's captions show them.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["word", "start", "end"],
+        "properties": {
+          "word": {
+            "type": "string",
+            "minLength": 1
+          },
+          "start": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end": {
+            "type": "number",
+            "minimum": 0
+          },
+          "line": {
+            "description": "Id of the line the word belongs to.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["source"],
+        "properties": {
+          "source": {
+            "const": "synthesis"
+          }
+        }
+      },
+      "then": {
+        "required": ["voice"],
+        "properties": {
+          "voice": {
+            "required": ["tool", "voice"],
+            "properties": {
+              "tool": {
+                "enum": ["edge_tts", "piper_tts", "openai_tts", "elevenlabs_tts"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

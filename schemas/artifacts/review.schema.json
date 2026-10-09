@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/review.schema.json",
+  "title": "Facet review",
+  "description": "One critique of a stage's work by the critic, who did not make it: the concepts (proposal), the script, the cut (edit) or the final video (review). Written to artifacts/review-<stage>-<round>.json. Findings are accurate (each points at a field, line, timestamp or frame), complete (after one problem, the rest of its kind) and constructive (every critical finding carries a concrete fix). Severity: critical (broken, false, missing or against the approved plan), suggestion (clearly better if fixed), nitpick (polish); do not inflate. No critical findings: pass. Critical findings in round 1: revise. Critical findings still open in round 2: pass_with_warnings, with them listed. There is no third round.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stage", "round", "verdict", "findings"],
+  "properties": {
+    "version": {
+      "description": "Record format version.",
+      "type": "string",
+      "const": "1.0"
+    },
+    "stage": {
+      "description": "The stage whose work was reviewed.",
+      "$ref": "#/$defs/stage_id"
+    },
+    "round": {
+      "description": "Review round, 1 or 2.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2
+    },
+    "verdict": {
+      "description": "pass: no critical findings. revise: critical findings in round 1. pass_with_warnings: critical findings still open in round 2.",
+      "enum": ["pass", "revise", "pass_with_warnings"]
+    },
+    "subject": {
+      "description": "Path of the record or render reviewed.",
+      "type": "string"
+    },
+    "summary": {
+      "description": "The reason for the verdict, in a sentence or two.",
+      "type": "string"
+    },
+    "checks": {
+      "description": "What the measuring tools reported, one line each.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tool", "result"],
+        "properties": {
+          "tool": {
+            "enum": ["script_check", "plan_check", "output_review", "frame_sample", "visual_qa"]
+          },
+          "result": {
+            "type": "string"
+          },
+          "evidence": {
+            "description": "Path of the saved report or evidence, under review/.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "findings": {
+      "description": "Every finding, critical first. Empty when there is nothing to report.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["verdict"],
+        "properties": {
+          "verdict": {
+            "const": "revise"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "round": {
+            "const": 1
+          },
+          "findings": {
+            "contains": {
+              "required": ["severity"],
+              "properties": {
+                "severity": {
+                  "const": "critical"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["verdict"],
+        "properties": {
+          "verdict": {
+            "const": "pass_with_warnings"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "round": {
+            "const": 2
+          },
+          "findings": {
+            "contains": {
+              "required": ["severity"],
+              "properties": {
+                "severity": {
+                  "const": "critical"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stage_id": {
+      "enum": ["intake", "research", "proposal", "script", "scene_plan", "assets", "edit", "compose", "review", "publish"]
+    },
+    "finding": {
+      "description": "One finding: area, issue and fix, or one description that says where, what is wrong and the fix.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity"],
+      "properties": {
+        "id": {
+          "description": "C1, C2 and so on for critical findings, S1 for suggestions, N1 for nitpicks.",
+          "type": "string"
+        },
+        "severity": {
+          "enum": ["critical", "suggestion", "nitpick"]
+        },
+        "area": {
+          "description": "Where: a field, line, section, scene, timestamp or frame.",
+          "type": "string",
+          "minLength": 1
+        },
+        "issue": {
+          "description": "What is wrong.",
+          "type": "string",
+          "minLength": 1
+        },
+        "fix": {
+          "description": "The concrete fix (\"section 3 is 180 words for 10 seconds; cut to 25 words\", not \"too long\"). Every critical finding has one; a concern you cannot fix precisely is an investigation note, not a critical finding.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "description": "The finding in one statement of where, what is wrong and the fix; an alternative to area, issue and fix.",
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "description": "Kind of problem, such as hook, pacing, facts, captions, sound or promise.",
+          "type": "string"
+        },
+        "send_back_to": {
+          "description": "The stage that should make the fix: audio to compose, pictures to assets or scene_plan, length to script, sync to edit.",
+          "$ref": "#/$defs/stage_id"
+        },
+        "disposition": {
+          "description": "The maker's response: accepted (fixed), rejected (reason in agent_response) or pending.",
+          "enum": ["accepted", "rejected", "pending"],
+          "default": "pending"
+        },
+        "agent_response": {
+          "description": "What the maker changed, or why the finding was rejected.",
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": ["area", "issue"]
+            },
+            {
+              "required": ["description"]
+            }
+          ]
+        },
+        {
+          "if": {
+            "required": ["severity"],
+            "properties": {
+              "severity": {
+                "const": "critical"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": ["fix"]
+              },
+              {
+                "required": ["description"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

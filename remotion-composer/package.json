@@ -1,0 +1,32 @@
+{
+  "name": "facet-remotion-composer",
+  "version": "0.0.1",
+  "description": "Facet-owned Remotion explainer composer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "remotion studio src/index.tsx",
+    "typecheck": "tsc --noEmit",
+    "build:test": "tsc",
+    "test:contract": "npm run build:test && node --test tests/contract.test.mjs",
+    "test:allowlist": "node --test tests/source-allowlist.test.mjs",
+    "test:render": "node --test tests/render.test.mjs",
+    "test": "npm run build:test && node --test \"tests/*.test.mjs\""
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.0",
+    "@fontsource/jetbrains-mono": "^5.2.0",
+    "@fontsource/noto-sans": "^5.2.0",
+    "@fontsource/playfair-display": "^5.2.0",
+    "@fontsource/space-grotesk": "^5.2.0",
+    "@remotion/cli": "4.0.484",
+    "@remotion/media-utils": "4.0.484",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "4.0.484"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "^5.3.0"
+  }
+}

@@ -1,0 +1,135 @@
+id: anime-ghibli
+
+identity:
+  name: Anime Ghibli
+  category: illustration
+  mood: warm, whimsical, contemplative, magical
+  pace: slow
+  best_for: Narrative animation, nature stories, emotional storytelling, fantasy visuals, educational pieces with a sense of wonder
+
+visual_language:
+  color_palette:
+    # Deep forest greens.
+    primary: ["#2D5016", "#1B4332"]
+    # Warm gold, cherry-blossom pink, spirit glow for magical elements, golden-hour light.
+    accent: ["#FFB347", "#FF6B9D", "#A8E6CF", "#FFF3B0"]
+    # Deep night sky.
+    background: "#0A0A1A"
+    surface: "#1A2332"
+    # Warm parchment white.
+    text: "#F5F0E8"
+    # Mossy sage.
+    muted: "#8B9A7E"
+  composition: centred subjects, rule of thirds for landscapes, generous negative space, layered depth
+  texture: soft watercolour edges, painterly brushstrokes, organic shapes, no hard geometric lines
+
+typography:
+  headings:
+    font: Playfair Display
+    weight: 500
+    tracking: "0.02em"
+  body:
+    font: Noto Sans
+    weight: 300
+    line_height: 1.7
+  code:
+    font: JetBrains Mono
+    weight: 400
+  stat_card:
+    font: Playfair Display
+    weight: 600
+    size_multiplier: 3.0
+  scale_system: major_third
+  weight_matrix:
+    title: 600
+    heading: 500
+    body: 300
+    caption: 300
+
+motion:
+  transitions: [fade]
+  camera_moves: [ken-burns, parallax, zoom-in, zoom-out, pan-left, pan-right]
+  animation_style: gentle springs, no overshoot, organic easing
+  spring:
+    damping: 18
+    stiffness: 60
+    mass: 1
+  pacing_rules:
+    min_scene_hold_seconds: 3.5
+    max_scene_hold_seconds: 7
+    text_card_hold_seconds: 4
+    stat_card_hold_seconds: 3.5
+    transition_duration_seconds: 1.0
+  entrance: gentle fade with a slow drift up (opacity 0 to 1, rising 8 px over 1 s)
+  exit: fade and dissolve (opacity 1 to 0 over 0.8 s)
+
+audio:
+  voice_style: warm, gentle, unhurried storytelling cadence, a soft-spoken narrator
+  music_mood: ambient piano, soft strings, nature sounds, gentle orchestral, in the manner of Joe Hisaishi
+  music_volume: 0.15
+  sfx_style: nature sounds (wind, water, birds), subtle magical chimes, nothing harsh
+
+asset_generation:
+  image_prompt_prefix: "hand-painted anime look, watercolour textures, soft diffused light, lush nature, warm palette, "
+  image_negative_prompt: photorealistic, 3D render, CGI, harsh shadows, dark and gritty, cyberpunk, neon
+  diagram_style: soft painted shapes with watercolour edges, warm light, no hard lines
+  consistency_anchors:
+    - "Deep forest greens (#2D5016) and warm golds (#FFB347) in every scene"
+    - Soft watercolour edges, no sharp digital lines
+    - "Layered depth: clear foreground, middle ground and background"
+    - Warm diffused light, never harsh or clinical
+    - "Magical elements glow teal (#A8E6CF) or warm gold (#FFF3B0)"
+    - "Nature always present: trees, flowers, water, sky"
+  scene_type: anime_scene
+  multi_image_per_scene: true
+  images_per_scene: 2
+  image_variation_guidance: >-
+    Make 2 to 3 images a scene with one small change each: the angle of the
+    light, leaves or particles in new positions, a gentle change of pose.
+    Keep the composition and palette identical; the crossfade reads as motion.
+  default_particles: fireflies
+  default_particle_color: "#FFE082"
+  default_vignette: true
+
+overlays:
+  stat_card:
+    bg: "rgba(10, 10, 26, 0.7)"
+    border: "#A8E6CF"
+    radius: 16
+    shadow: "0 4px 30px rgba(168, 230, 207, 0.15)"
+  key_term:
+    bg: "rgba(45, 80, 22, 0.5)"
+    text: "#A8E6CF"
+    radius: 8
+  section_title:
+    bg: "rgba(10, 10, 26, 0.6)"
+    text: "#FFF3B0"
+    accent: "#FFB347"
+  captions:
+    bg: "rgba(10, 10, 26, 0.8)"
+    text: "#F5F0E8"
+    highlight: "#FFB347"
+
+quality_rules:
+  - Contrast at least 4.5:1 for all text against its background
+  - At most 3 images a scene for the crossfade; more looks jumpy
+  - Every scene has at least one animated element, particles or a camera move
+  - Hold each scene 4 to 6 seconds; never rush
+  - Crossfades between the images of a scene last 1 to 1.5 seconds
+  - A vignette on every image scene, for depth
+  - One palette across all generated images; reuse the seed where the image tool returns one
+  - No text inside generated images; words go on screen as composition text or captions
+  - The style's fonts have no Japanese glyphs; Japanese titles need a font that covers Japanese
+
+chart_palette:
+  - "#A8E6CF"
+  - "#FFB347"
+  - "#FF6B9D"
+  - "#87CEEB"
+  - "#DDA0DD"
+  - "#F5F0E8"
+
+color_rules:
+  harmony_type: analogous
+  contrast_validation: true
+  colorblind_safe: true

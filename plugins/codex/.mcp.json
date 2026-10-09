@@ -1,0 +1,66 @@
+{
+  "mcpServers": {
+    "facet": {
+      "command": "facet",
+      "args": [
+        "mcp"
+      ],
+      "env_vars": [
+        "CHROME_PATH",
+        "ELEVENLABS_API_KEY",
+        "FACET_HOME",
+        "FACET_HYPERFRAMES",
+        "FACET_PIPER_MODEL",
+        "FACET_REMOTION_COMPOSER",
+        "FAL_BASE_URL",
+        "FAL_KEY",
+        "FAL_QUEUE_BASE_URL",
+        "FLUX_API_KEY",
+        "HTTPS_PROXY",
+        "HTTP_PROXY",
+        "KLING_API_KEY",
+        "MUSIC_LIBRARY_DIR",
+        "NODE_EXTRA_CA_CERTS",
+        "NO_PROXY",
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+        "PEXELS_API_KEY",
+        "PIXABAY_API_KEY",
+        "PUPPETEER_EXECUTABLE_PATH",
+        "REMOTION_BROWSER_EXECUTABLE",
+        "SSL_CERT_DIR",
+        "SSL_CERT_FILE",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy"
+      ],
+      "tool_timeout_sec": 600,
+      "tools": {
+        "elevenlabs_tts": {
+          "approval_mode": "prompt"
+        },
+        "flux_image": {
+          "approval_mode": "prompt"
+        },
+        "gflow_image": {
+          "approval_mode": "prompt"
+        },
+        "gflow_video": {
+          "approval_mode": "prompt"
+        },
+        "kling_video": {
+          "approval_mode": "prompt"
+        },
+        "openai_image": {
+          "approval_mode": "prompt"
+        },
+        "openai_tts": {
+          "approval_mode": "prompt"
+        },
+        "sora_video": {
+          "approval_mode": "prompt"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,555 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/style.schema.json",
+  "title": "Facet style",
+  "description": "A visual style: palette, type, motion, sound, image direction and quality rules that keep one video coherent. One file per style in styles/, named <id>.yaml. The theme field of edit_decisions names a style by its id, and templated compositions take their theme from it. Fonts are limited to the families installed with Facet, so a render never fetches or substitutes one. Unknown keys are not allowed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "identity",
+    "visual_language",
+    "typography",
+    "motion",
+    "audio",
+    "asset_generation",
+    "overlays",
+    "quality_rules",
+    "chart_palette",
+    "color_rules"
+  ],
+  "properties": {
+    "id": {
+      "description": "Style id: the file name without .yaml, and the value of theme in edit_decisions.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "identity": {
+      "description": "What the style is and when it fits.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "category", "mood", "pace", "best_for"],
+      "properties": {
+        "name": {
+          "description": "Human name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "description": "Broad family of the look.",
+          "enum": ["motion-graphics", "whiteboard", "cinematic", "minimalist", "illustration", "retro", "custom"]
+        },
+        "mood": {
+          "description": "A few words for how it feels.",
+          "type": "string",
+          "minLength": 1
+        },
+        "pace": {
+          "description": "The editing pace the style expects.",
+          "enum": ["slow", "deliberate", "moderate", "fast", "rapid"]
+        },
+        "best_for": {
+          "description": "Kinds of video it suits.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "visual_language": {
+      "description": "Colour, framing and surface.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["color_palette", "composition", "texture"],
+      "properties": {
+        "color_palette": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary", "accent", "background", "surface", "text", "muted"],
+          "properties": {
+            "primary": {
+              "description": "Structural colours, strongest first.",
+              "$ref": "#/$defs/hex_list"
+            },
+            "accent": {
+              "description": "Emphasis colours, strongest first. Use them sparingly.",
+              "$ref": "#/$defs/hex_list"
+            },
+            "background": {
+              "description": "Frame background.",
+              "$ref": "#/$defs/hex_color"
+            },
+            "surface": {
+              "description": "Cards, panels and chart areas over the background.",
+              "$ref": "#/$defs/hex_color"
+            },
+            "text": {
+              "description": "Main text colour. Meets the style's contrast rule against background and surface.",
+              "$ref": "#/$defs/hex_color"
+            },
+            "muted": {
+              "description": "Secondary text: labels, axis text, sources.",
+              "$ref": "#/$defs/hex_color"
+            }
+          }
+        },
+        "composition": {
+          "description": "Framing and layout habits.",
+          "type": "string",
+          "minLength": 1
+        },
+        "texture": {
+          "description": "Surface finish: flat, grain, paper, paint.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "typography": {
+      "description": "Families, weights and type scale.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headings", "body", "code"],
+      "properties": {
+        "headings": {
+          "description": "Titles and headings.",
+          "$ref": "#/$defs/font_spec"
+        },
+        "body": {
+          "description": "Body text, labels and captions.",
+          "$ref": "#/$defs/font_spec"
+        },
+        "code": {
+          "description": "Code, terminal text and tabular figures.",
+          "$ref": "#/$defs/font_spec"
+        },
+        "stat_card": {
+          "description": "Large single figures. size_multiplier is relative to body text.",
+          "$ref": "#/$defs/font_spec"
+        },
+        "scale_system": {
+          "description": "Ratio between steps of the type scale: a named modular scale (minor_second 1.067, major_second 1.125, minor_third 1.2, major_third 1.25, perfect_fourth 1.333, golden 1.618) or a number above 1.",
+          "oneOf": [
+            {
+              "enum": ["minor_second", "major_second", "minor_third", "major_third", "perfect_fourth", "golden"]
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 1
+            }
+          ]
+        },
+        "weight_matrix": {
+          "description": "Weight for each typographic role. Title and heading use the headings family, body and caption the body family; each weight must be one that family ships.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "heading", "body", "caption"],
+          "properties": {
+            "title": { "$ref": "#/$defs/font_weight" },
+            "heading": { "$ref": "#/$defs/font_weight" },
+            "body": { "$ref": "#/$defs/font_weight" },
+            "caption": { "$ref": "#/$defs/font_weight" }
+          }
+        }
+      }
+    },
+    "motion": {
+      "description": "How things move and how long they hold.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transitions", "camera_moves", "animation_style", "spring", "pacing_rules", "entrance", "exit"],
+      "properties": {
+        "transitions": {
+          "description": "Transitions between cuts this style uses, most usual first. Values for a cut's transition.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["cut", "fade", "slide", "wipe", "flip", "clock-wipe", "iris"]
+          }
+        },
+        "camera_moves": {
+          "description": "Camera moves on still images, most usual first. Values for an image cut's animation.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["zoom-in", "zoom-out", "pan-left", "pan-right", "ken-burns", "parallax", "static"]
+          }
+        },
+        "animation_style": {
+          "description": "Easing and character of element motion, in words.",
+          "type": "string",
+          "minLength": 1
+        },
+        "spring": {
+          "description": "Spring for element entrances, as in Remotion's spring(). Damping at or above 2 x sqrt(stiffness x mass) never overshoots; below it, elements bounce.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["damping", "stiffness", "mass"],
+          "properties": {
+            "damping": { "type": "number", "exclusiveMinimum": 0 },
+            "stiffness": { "type": "number", "exclusiveMinimum": 0 },
+            "mass": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "pacing_rules": {
+          "description": "Hold lengths, in seconds.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min_scene_hold_seconds",
+            "max_scene_hold_seconds",
+            "text_card_hold_seconds",
+            "stat_card_hold_seconds",
+            "transition_duration_seconds"
+          ],
+          "properties": {
+            "min_scene_hold_seconds": {
+              "description": "Shortest time a scene stays on screen.",
+              "type": "number",
+              "minimum": 0.5
+            },
+            "max_scene_hold_seconds": {
+              "description": "Longest time a scene stays before something changes.",
+              "type": "number",
+              "minimum": 1
+            },
+            "text_card_hold_seconds": {
+              "description": "Hold for a text card or title.",
+              "type": "number",
+              "minimum": 1
+            },
+            "stat_card_hold_seconds": {
+              "description": "Hold for one big number.",
+              "type": "number",
+              "minimum": 1
+            },
+            "transition_duration_seconds": {
+              "description": "Usual transition_duration.",
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 2
+            }
+          }
+        },
+        "entrance": {
+          "description": "How elements arrive.",
+          "type": "string",
+          "minLength": 1
+        },
+        "exit": {
+          "description": "How elements leave.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "audio": {
+      "description": "How the video sounds.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["voice_style", "music_mood", "music_volume", "sfx_style"],
+      "properties": {
+        "voice_style": {
+          "description": "Narration tone, pace and warmth. Guides the choice of voice and its delivery.",
+          "type": "string",
+          "minLength": 1
+        },
+        "music_mood": {
+          "description": "What to look for in a track.",
+          "type": "string",
+          "minLength": 1
+        },
+        "music_volume": {
+          "description": "Music bed level as a linear gain from 0 to 1 on the track, the volume a composition plays it at. A starting point: judge it against the voice, with music 18 to 20 dB under speech.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sfx_style": {
+          "description": "Kind of sound effects, when the project has effect files.",
+          "type": "string",
+          "minLength": 1
+        },
+        "voice_variation_allowed": {
+          "description": "Whether the voice may change between sections for emphasis.",
+          "type": "boolean"
+        },
+        "hero_moment_voice_shift": {
+          "description": "How the voice changes for the hero moment, for example slower, more deliberate, lower.",
+          "type": "string"
+        },
+        "transition_voice_shift": {
+          "description": "How the voice changes at section changes, for example a short pause, then a little more energy.",
+          "type": "string"
+        }
+      }
+    },
+    "asset_generation": {
+      "description": "Direction for generated images and diagrams.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image_prompt_prefix", "image_negative_prompt", "diagram_style", "consistency_anchors"],
+      "properties": {
+        "image_prompt_prefix": {
+          "description": "Style anchor that starts every image prompt, so a set of images reads as one video.",
+          "type": "string",
+          "minLength": 1
+        },
+        "image_negative_prompt": {
+          "description": "What to keep out, for image tools that take a negative prompt. For the others, write the wanted opposite into the prompt instead.",
+          "type": "string",
+          "minLength": 1
+        },
+        "diagram_style": {
+          "description": "How diagrams are drawn.",
+          "type": "string",
+          "minLength": 1
+        },
+        "consistency_anchors": {
+          "description": "Rules every generated image keeps.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "scene_type": {
+          "description": "The scene type this style usually builds image scenes as.",
+          "enum": [
+            "text_card",
+            "hero_title",
+            "section_title",
+            "callout",
+            "stat_card",
+            "stat_reveal",
+            "kpi_grid",
+            "progress_bar",
+            "comparison",
+            "bar_chart",
+            "line_chart",
+            "pie_chart",
+            "terminal_scene",
+            "screenshot_scene",
+            "anime_scene",
+            "provider_chip",
+            "image",
+            "video"
+          ]
+        },
+        "multi_image_per_scene": {
+          "description": "Whether a scene is built from several stills that crossfade (the anime_scene grammar) rather than one image.",
+          "type": "boolean"
+        },
+        "images_per_scene": {
+          "description": "How many stills to make for each scene when multi_image_per_scene is true.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "image_variation_guidance": {
+          "description": "How the stills of one scene differ, so the crossfade reads as motion.",
+          "type": "string",
+          "minLength": 1
+        },
+        "default_particles": {
+          "description": "Default particle overlay for anime_scene cuts: a particle type listed in guidance/runtimes/scene-types.md.",
+          "type": "string",
+          "minLength": 1
+        },
+        "default_particle_color": {
+          "description": "Default particle colour.",
+          "$ref": "#/$defs/hex_color"
+        },
+        "default_vignette": {
+          "description": "Whether image scenes get a vignette by default.",
+          "type": "boolean"
+        }
+      },
+      "dependentRequired": {
+        "multi_image_per_scene": ["images_per_scene", "image_variation_guidance"]
+      }
+    },
+    "overlays": {
+      "description": "Colours and shapes of panels and labels drawn over or inside scenes. captions styles the word captions a composition draws: bg is the band behind the words, text the words, highlight the spoken word (the captions highlight_color).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stat_card", "captions"],
+      "properties": {
+        "stat_card": { "$ref": "#/$defs/overlay_style" },
+        "key_term": { "$ref": "#/$defs/overlay_style" },
+        "code_block": { "$ref": "#/$defs/overlay_style" },
+        "section_title": { "$ref": "#/$defs/overlay_style" },
+        "stat_reveal": { "$ref": "#/$defs/overlay_style" },
+        "hero_title": { "$ref": "#/$defs/overlay_style" },
+        "provider_chip": { "$ref": "#/$defs/overlay_style" },
+        "captions": { "$ref": "#/$defs/overlay_style" }
+      }
+    },
+    "quality_rules": {
+      "description": "Rules every frame of a video in this style keeps; check them at review.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "taste_profile": {
+      "$ref": "#/$defs/taste_profile"
+    },
+    "chart_palette": {
+      "description": "Colours for chart series, in order. Use the same list for every chart in a video.",
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/hex_color" }
+    },
+    "color_rules": {
+      "description": "How the palette is checked.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["harmony_type", "contrast_validation", "colorblind_safe"],
+      "properties": {
+        "harmony_type": {
+          "description": "How the palette's hues relate.",
+          "enum": ["complementary", "analogous", "triadic", "split-complementary"]
+        },
+        "contrast_validation": {
+          "description": "Check every text and background pair against WCAG 2.1 contrast before rendering.",
+          "type": "boolean"
+        },
+        "colorblind_safe": {
+          "description": "Keep chart and accent colours distinguishable for common colour-vision deficiencies; never let red against green alone carry meaning.",
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hex_color": {
+      "description": "Opaque colour as #RRGGBB.",
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$"
+    },
+    "hex_list": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/hex_color" }
+    },
+    "css_color": {
+      "description": "#RRGGBB, #RRGGBBAA, rgb() or rgba().",
+      "type": "string",
+      "pattern": "^(#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?|rgba?\\(\\s*[0-9]{1,3}\\s*,\\s*[0-9]{1,3}\\s*,\\s*[0-9]{1,3}\\s*(,\\s*(0|1|0?\\.[0-9]+)\\s*)?\\))$"
+    },
+    "font_weight": {
+      "description": "CSS font weight.",
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 900,
+      "multipleOf": 100
+    },
+    "font_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["font", "weight"],
+      "properties": {
+        "font": {
+          "description": "Family, one of those installed with Facet from @fontsource. Weights each ships: Inter and Noto Sans 100 to 900, Space Grotesk 300 to 700, Playfair Display 400 to 900, JetBrains Mono 100 to 800.",
+          "enum": ["Inter", "Space Grotesk", "Playfair Display", "JetBrains Mono", "Noto Sans"]
+        },
+        "weight": { "$ref": "#/$defs/font_weight" },
+        "tracking": {
+          "description": "Letter spacing in em; 0 for none.",
+          "type": "string",
+          "pattern": "^(0|-?[0-9]*\\.?[0-9]+em)$"
+        },
+        "line_height": {
+          "description": "Line height as a multiple of the font size.",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2.5
+        },
+        "size_multiplier": {
+          "description": "Size relative to body text.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "font": { "const": "Space Grotesk" } } },
+          "then": { "properties": { "weight": { "minimum": 300, "maximum": 700 } } }
+        },
+        {
+          "if": { "properties": { "font": { "const": "Playfair Display" } } },
+          "then": { "properties": { "weight": { "minimum": 400 } } }
+        },
+        {
+          "if": { "properties": { "font": { "const": "JetBrains Mono" } } },
+          "then": { "properties": { "weight": { "maximum": 800 } } }
+        }
+      ]
+    },
+    "overlay_style": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "bg": { "$ref": "#/$defs/css_color" },
+        "border": { "$ref": "#/$defs/css_color" },
+        "text": { "$ref": "#/$defs/css_color" },
+        "highlight": { "$ref": "#/$defs/css_color" },
+        "accent": { "$ref": "#/$defs/css_color" },
+        "radius": {
+          "description": "Corner radius in pixels on a 1080p frame.",
+          "type": "number",
+          "minimum": 0
+        },
+        "shadow": {
+          "description": "CSS box-shadow, or none.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "taste_profile": {
+      "description": "The design read the style was made for, in the terms of guidance/craft/taste-direction.md.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["design_read", "visual_variance", "motion_intensity", "information_density"],
+      "properties": {
+        "design_read": {
+          "description": "What the video should feel like, and why.",
+          "type": "string",
+          "minLength": 1
+        },
+        "visual_variance": {
+          "description": "How much scenes may differ while still feeling like one video, 1 to 10.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "motion_intensity": {
+          "description": "How energetic the motion is, 1 to 10.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "information_density": {
+          "description": "How much information is on screen at once, 1 to 10.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "palette_discipline": { "type": "string", "minLength": 1 },
+        "layout_variation": { "type": "string", "minLength": 1 },
+        "reference_strategy": { "type": "string", "minLength": 1 },
+        "anti_patterns": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "quality_gates": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

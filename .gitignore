@@ -1,0 +1,42 @@
+# Dependencies & local artifacts
+node_modules/
+**/node_modules/
+**/node_modules
+remotion-composer/node_modules/
+.playwright-cli/
+/.brains/
+/.opencode/
+# Generated local verification fixtures/cache/evidence, not product source; retain on disk.
+/.quality-run/
+*.temp
+*.log
+*.tgz
+
+# Binaries
+*.exe
+*.test
+build/
+bin/facet-*
+bin/facet
+!bin/*.js
+# Windows resource objects scripts/package-release.py generates for a build.
+cmd/facet/rsrc_windows_*.syso
+
+# Scratch probes from coordinating sessions. Several sessions can work in this
+# tree at once, and `git add -A` cannot tell a peer's temporary file from one's
+# own. The prefix is the convention peers are asked to use for throwaway files,
+# so a capture is impossible rather than merely unlikely.
+zz_*_test.go
+zz_*.go
+
+# Build output (bundle packaging, composer test builds) and Python caches.
+/dist/
+/remotion-composer/dist/
+__pycache__/
+
+# Session scaffolding prompts. Local working notes for whoever is driving a
+# session; not product source and not reproducible from it. Ignored rather
+# than deleted so a session can keep its own context without that context
+# becoming a tracked artifact someone later mistakes for documentation.
+/SESSION_PROMPT.md
+/STARTER_PROMPT.md

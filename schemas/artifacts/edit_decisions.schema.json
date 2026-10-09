@@ -1,0 +1,493 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kayiik.github.io/facet/schemas/artifacts/edit_decisions.schema.json",
+  "title": "Facet edit decisions",
+  "description": "The timeline: what plays when, how it moves, where captions sit and how voice and music share the space. The editor writes it to artifacts/edit_decisions.json, and it is exactly what video_compose renders; video_compose refuses unknown fields. The locked settings (render_runtime, composition_mode, renderer_family, delivery_promise) are carried unchanged from the proposal_packet, or from the brief's metadata where the pipeline has no proposal stage; changing one is a change of plan that needs the operator. Cuts are built on the real narration timing, not on planned durations. plan_check reads the cuts with the narration timing and the delivery promise.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["render_runtime", "composition_mode", "delivery_promise"],
+  "properties": {
+    "render_runtime": {
+      "description": "The engine locked at the proposal. remotion renders the templated compositions or a bespoke Remotion entry; hyperframes renders a HyperFrames workspace; ffmpeg cuts and joins footage.",
+      "enum": ["remotion", "hyperframes", "ffmpeg"]
+    },
+    "composition_mode": {
+      "description": "Locked at the proposal. templated assembles the Explainer scene types and media cuts into the stock compositions; atelier renders a composition written for this piece (bespoke for Remotion, or a HyperFrames workspace). Stock scene types do not appear in an atelier piece.",
+      "enum": ["templated", "atelier"]
+    },
+    "renderer_family": {
+      "description": "Locked at the proposal; required for templated work. explainer-data, explainer-teacher, product-reveal, screen-demo and animation-first render with Explainer (cuts); cinematic-trailer and documentary-montage with CinematicRenderer (scenes); presenter with TalkingHead.",
+      "enum": [
+        "explainer-data",
+        "explainer-teacher",
+        "product-reveal",
+        "screen-demo",
+        "animation-first",
+        "cinematic-trailer",
+        "documentary-montage",
+        "presenter"
+      ]
+    },
+    "delivery_promise": {
+      "$ref": "#/$defs/delivery_promise"
+    },
+    "theme": {
+      "description": "The style id whose palette, type and motion the templated compositions use.",
+      "enum": ["clean-professional", "flat-motion-graphics", "minimalist-diagram", "premium-minimalist", "anime-ghibli"]
+    },
+    "width": {
+      "description": "Output width in pixels, an even number; 1920 when left out. The platform sets the frame: 1080 by 1920 for vertical video.",
+      "type": "integer",
+      "minimum": 2,
+      "multipleOf": 2
+    },
+    "height": {
+      "description": "Output height in pixels, an even number; 1080 when left out.",
+      "type": "integer",
+      "minimum": 2,
+      "multipleOf": 2
+    },
+    "fps": {
+      "description": "Frames per second; 30 when left out.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120
+    },
+    "timing_path": {
+      "description": "The narration_timing record (usually artifacts/narration_timing.json). Required when a cut is timed by lines.",
+      "type": "string",
+      "minLength": 1
+    },
+    "cuts": {
+      "description": "The cuts in order. Explainer and the FFmpeg path take cuts; CinematicRenderer takes scenes.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/cut"
+      }
+    },
+    "scenes": {
+      "description": "CinematicRenderer's scenes, used instead of cuts; their fields are listed in guidance/runtimes/scene-types.md.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object"
+      }
+    },
+    "captions": {
+      "description": "The word-caption layer the composition draws from the narration timing. Decide once whether captions subtitle the narration or add meaning, and never show both for the same line. Burned subtitles for footage or an FFmpeg render are made after the render with subtitle_gen and ffmpeg_caption_burn instead.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timing_path"],
+      "properties": {
+        "timing_path": {
+          "description": "The narration_timing record whose words the captions show.",
+          "type": "string",
+          "minLength": 1
+        },
+        "words_per_page": {
+          "description": "Words shown at once: about 4, and 3 for vertical video.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "highlight_color": {
+          "description": "Colour of the word being spoken, as hex (#RRGGBB), usually the style's accent.",
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+        },
+        "position": {
+          "description": "bottom by default; center when the captions are the main text of the piece. Keep them clear of other on-screen text.",
+          "enum": ["bottom", "center", "top"]
+        }
+      }
+    },
+    "audio": {
+      "description": "Narration, music and sound effects. Narration comes first; music sits under it.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "narration": {
+          "description": "The assembled narration file (the file named in narration_timing).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["src"],
+          "properties": {
+            "src": {
+              "$ref": "#/$defs/media_path"
+            },
+            "volume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "music": {
+          "description": "The music track agreed at the proposal.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["src"],
+          "properties": {
+            "src": {
+              "$ref": "#/$defs/media_path"
+            },
+            "volume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "duck_under_narration": {
+              "description": "True lowers the music wherever the narration speaks.",
+              "type": "boolean"
+            },
+            "sections": {
+              "description": "Where the music plays, when the plan limits it to chosen sections; it plays throughout when left out.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["start_seconds", "end_seconds"],
+                "properties": {
+                  "start_seconds": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "end_seconds": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "offset_seconds": {
+              "description": "Where in the track playback starts.",
+              "type": "number",
+              "minimum": 0
+            },
+            "loop": {
+              "description": "True repeats the track when it is shorter than the video.",
+              "type": "boolean"
+            },
+            "fade_in_seconds": {
+              "type": "number",
+              "minimum": 0
+            },
+            "fade_out_seconds": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "sfx": {
+          "description": "Sound-effect cues at their seconds.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["src", "at_seconds"],
+            "properties": {
+              "src": {
+                "$ref": "#/$defs/media_path"
+              },
+              "at_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "gain_db": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "loudness_target": {
+          "description": "Integrated loudness target in LUFS; -14 for online platforms.",
+          "type": "number",
+          "maximum": 0
+        }
+      }
+    },
+    "bespoke": {
+      "description": "Atelier work on Remotion: the composition written for this piece. Required when composition_mode is atelier and render_runtime is remotion.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry", "composition_id"],
+      "properties": {
+        "entry": {
+          "description": "Project-relative path of the Remotion entry (.tsx) that registers the composition.",
+          "type": "string",
+          "pattern": "\\.tsx$"
+        },
+        "composition_id": {
+          "description": "The composition id registered in that entry.",
+          "type": "string",
+          "minLength": 1
+        },
+        "props_path": {
+          "description": "Path of a JSON file holding the props passed to the composition.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "metadata": {
+      "description": "Free-form notes.",
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["composition_mode"],
+        "properties": {
+          "composition_mode": {
+            "const": "templated"
+          }
+        }
+      },
+      "then": {
+        "required": ["renderer_family"],
+        "anyOf": [
+          {
+            "required": ["cuts"]
+          },
+          {
+            "required": ["scenes"]
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": ["composition_mode"],
+        "properties": {
+          "composition_mode": {
+            "const": "atelier"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "cuts": {
+            "items": {
+              "not": {
+                "required": ["type"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["composition_mode", "render_runtime"],
+        "properties": {
+          "composition_mode": {
+            "const": "atelier"
+          },
+          "render_runtime": {
+            "const": "remotion"
+          }
+        }
+      },
+      "then": {
+        "required": ["bespoke"]
+      }
+    },
+    {
+      "if": {
+        "required": ["render_runtime"],
+        "properties": {
+          "render_runtime": {
+            "const": "ffmpeg"
+          }
+        }
+      },
+      "then": {
+        "required": ["cuts"],
+        "properties": {
+          "cuts": {
+            "items": {
+              "required": ["source"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["cuts"],
+        "properties": {
+          "cuts": {
+            "contains": {
+              "type": "object",
+              "required": ["lines"]
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["timing_path"]
+      }
+    }
+  ],
+  "$defs": {
+    "media_path": {
+      "description": "A project-relative path, an absolute path or an http(s) URL.",
+      "type": "string",
+      "minLength": 1
+    },
+    "cut": {
+      "description": "One cut: an Explainer scene (type, with that scene type's fields from guidance/runtimes/scene-types.md set on the cut itself) or a media cut (source and no type). Timed by in_seconds and out_seconds, or by lines; not both.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "description": "The Explainer scene type.",
+          "enum": [
+            "text_card",
+            "hero_title",
+            "section_title",
+            "callout",
+            "stat_card",
+            "stat_reveal",
+            "kpi_grid",
+            "progress_bar",
+            "comparison",
+            "bar_chart",
+            "line_chart",
+            "pie_chart",
+            "terminal_scene",
+            "screenshot_scene",
+            "anime_scene",
+            "provider_chip"
+          ]
+        },
+        "source": {
+          "description": "A media cut's image or video: its path in asset_manifest, an absolute path or an http(s) URL.",
+          "$ref": "#/$defs/media_path"
+        },
+        "media_kind": {
+          "description": "image or video, when the file extension does not say.",
+          "enum": ["image", "video"]
+        },
+        "in_seconds": {
+          "description": "Remotion: where the cut starts on the video's timeline. FFmpeg: where the range taken from the source starts; the cuts play one after another.",
+          "type": "number",
+          "minimum": 0
+        },
+        "out_seconds": {
+          "description": "Remotion: where the cut ends on the timeline. FFmpeg: where the range taken from the source ends. Greater than in_seconds.",
+          "type": "number",
+          "minimum": 0
+        },
+        "lines": {
+          "description": "Instead of in_seconds and out_seconds: the narration line ids the cut follows, in order, such as [\"l3\", \"l4\"], timed from the record at timing_path.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "source_in_seconds": {
+          "description": "Where playback starts inside a video source.",
+          "type": "number",
+          "minimum": 0
+        },
+        "animation": {
+          "description": "Camera move over a still image.",
+          "enum": ["zoom-in", "zoom-out", "pan-left", "pan-right", "ken-burns", "parallax", "static"]
+        },
+        "transition": {
+          "description": "The transition into the next cut, from the style's set; keep the special ones for topic shifts.",
+          "enum": ["cut", "fade", "slide", "wipe", "flip", "clock-wipe", "iris"]
+        },
+        "transition_duration": {
+          "description": "Transition length in seconds.",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": ["type"]
+            },
+            {
+              "required": ["source"]
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "required": ["in_seconds", "out_seconds"]
+            },
+            {
+              "required": ["lines"]
+            }
+          ]
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": ["lines", "in_seconds"]
+              },
+              {
+                "required": ["lines", "out_seconds"]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "delivery_promise": {
+      "description": "What kind of video is promised, carried unchanged from the plan. The cut is checked against it before rendering, so a still slideshow cannot pass for a motion-led video.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promise_type", "motion_required"],
+      "properties": {
+        "promise_type": {
+          "description": "motion_led: real motion carries the video. source_led: the supplied footage leads. data_explainer: data and charts carry it. teacher_explainer: a step-by-step walk through a concept. screen_demo: software or a website shown working. avatar_presenter: a presenter speaking to camera. hybrid: supplied footage with designed or generated support. localization: an existing video in another language.",
+          "enum": [
+            "motion_led",
+            "source_led",
+            "data_explainer",
+            "teacher_explainer",
+            "screen_demo",
+            "avatar_presenter",
+            "hybrid",
+            "localization"
+          ]
+        },
+        "motion_required": {
+          "description": "True when the video depends on real motion (video clips, animation), not on camera moves over stills.",
+          "type": "boolean"
+        },
+        "source_required": {
+          "description": "True when the operator's supplied footage must lead.",
+          "type": "boolean"
+        },
+        "tone_mode": {
+          "description": "Tone of the delivery, such as cinematic, educational, corporate, playful, raw, intimate or epic.",
+          "type": "string"
+        },
+        "quality_floor": {
+          "description": "The lowest finish the operator accepts.",
+          "enum": ["draft", "presentable", "broadcast"]
+        },
+        "approved_fallback": {
+          "description": "A lesser form the operator agreed to if the promised one cannot be made: animatic or still_led. null (the default) when none was agreed.",
+          "enum": ["animatic", "still_led", null]
+        }
+      }
+    }
+  }
+}
