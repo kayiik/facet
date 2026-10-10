@@ -119,7 +119,10 @@ type CapabilityTool struct {
 	Runtime    string   `json:"runtime"`
 	Configured bool     `json:"configured"`
 	Missing    []string `json:"missing,omitempty"`
-	CreditNote string   `json:"credit_note,omitempty"`
+	// Install is the command that installs the components a tool that is
+	// not configured is missing, when Facet can install them.
+	Install    string `json:"install,omitempty"`
+	CreditNote string `json:"credit_note,omitempty"`
 }
 
 // CapabilityReport is one line of the preflight menu: how many of a

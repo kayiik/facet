@@ -9,6 +9,7 @@ import (
 
 	facet "github.com/kayiik/facet"
 	"github.com/kayiik/facet/internal/catalog"
+	"github.com/kayiik/facet/internal/components"
 	"github.com/kayiik/facet/internal/toolbox"
 )
 
@@ -36,8 +37,10 @@ func fail(op, code, message string) Envelope {
 
 // Capabilities is the preflight menu: every capability with its tools, free
 // first, and whether each is ready; plus the composition runtimes installed.
+// A tool that is not ready names the `facet install` command that readies it,
+// when Facet can install what it lacks.
 func Capabilities() Envelope {
-	reports := toolbox.Capabilities(catalog.Capabilities)
+	reports := withInstall(toolbox.Capabilities(catalog.Capabilities))
 	configured := map[string]bool{}
 	for _, r := range reports {
 		for _, t := range r.Tools {
@@ -146,7 +149,30 @@ func availability(needs map[string]bool) []toolbox.CapabilityReport {
 			order = append(order, c)
 		}
 	}
-	return toolbox.Capabilities(order)
+	return withInstall(toolbox.Capabilities(order))
+}
+
+// withInstall names, for each tool that is not ready, the command that
+// installs the components it lacks.
+func withInstall(reports []toolbox.CapabilityReport) []toolbox.CapabilityReport {
+	for i := range reports {
+		for j := range reports[i].Tools {
+			tool := &reports[i].Tools[j]
+			if tool.Configured {
+				continue
+			}
+			var ids []string
+			for _, missing := range tool.Missing {
+				if id := components.ForDependency(missing); id != "" {
+					ids = append(ids, id)
+				}
+			}
+			if ids = components.Minimal(ids); len(ids) > 0 {
+				tool.Install = "facet install " + strings.Join(ids, " ")
+			}
+		}
+	}
+	return reports
 }
 
 // Guidance returns one bundled file, or the file list under a folder such as

@@ -26,7 +26,7 @@ func EnvVars() []string {
 		"OPENAI_BASE_URL", "FAL_BASE_URL", "FAL_QUEUE_BASE_URL",
 		// Local programs and libraries.
 		ComposerDirEnv, hyperframesEnv, "FACET_PIPER_MODEL", "MUSIC_LIBRARY_DIR",
-		"REMOTION_BROWSER_EXECUTABLE", "PUPPETEER_EXECUTABLE_PATH", "CHROME_PATH",
+		"REMOTION_BROWSER_EXECUTABLE", "PUPPETEER_EXECUTABLE_PATH", "CHROME_PATH", hyperframesBrowserEnv,
 		// Facet's home folder.
 		facethome.EnvVar,
 		// Network settings: Go's HTTP client reads both spellings of the

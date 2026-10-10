@@ -61,16 +61,22 @@ func privatePiperPath(root string) string {
 }
 
 // The runtime's private copies win over PATH, so an installed Facet runs the
-// Node and Piper it installed rather than whatever the shell happens to have.
+// FFmpeg, Node and Piper it installed rather than whatever the shell happens
+// to have.
 func TestLookPathPrefersRuntimeDependencies(t *testing.T) {
 	root := fakeRuntime(t)
 	onPath := t.TempDir()
-	for _, name := range []string{"node", "piper"} {
+	private := map[string]string{
+		"node": privateNodePath(root), "piper": privatePiperPath(root),
+		"ffmpeg":  filepath.Join(root, "dependencies", "ffmpeg", "bin", "ffmpeg"+exeSuffix()),
+		"ffprobe": filepath.Join(root, "dependencies", "ffmpeg", "bin", "ffprobe"+exeSuffix()),
+	}
+	for name := range private {
 		writeExecutable(t, filepath.Join(onPath, name+exeSuffix()))
 	}
 	t.Setenv("PATH", onPath)
 
-	for name, private := range map[string]string{"node": privateNodePath(root), "piper": privatePiperPath(root)} {
+	for name, private := range private {
 		got, err := lookPath(name)
 		if err != nil || !sameFile(got, filepath.Join(onPath, name+exeSuffix())) {
 			t.Fatalf("without a private %s, lookPath = %q, %v; want the PATH copy", name, got, err)
@@ -82,18 +88,55 @@ func TestLookPathPrefersRuntimeDependencies(t *testing.T) {
 	}
 }
 
-// Only what the installer places under dependencies is looked up there; any
-// other program still comes from PATH.
+// Only what the installer places under dependencies, where it places it, is
+// looked up there; any other program still comes from PATH.
 func TestLookPathUsesRuntimeOnlyForInstalledDependencies(t *testing.T) {
 	root := fakeRuntime(t)
 	writeExecutable(t, filepath.Join(root, "dependencies", "ffmpeg", "ffmpeg"+exeSuffix()))
-	writeExecutable(t, filepath.Join(root, "dependencies", "ffmpeg", "bin", "ffmpeg"+exeSuffix()))
+	writeExecutable(t, filepath.Join(root, "dependencies", "gflow", "bin", "gflow"+exeSuffix()))
 	t.Setenv("PATH", t.TempDir())
 	if got, err := lookPath("ffmpeg"); err == nil {
 		t.Fatalf("ffmpeg resolved to %q from an undeclared runtime location", got)
 	}
+	if got, err := lookPath("gflow"); err == nil {
+		t.Fatalf("gflow resolved to %q from the runtime, which never installs it", got)
+	}
 	if _, err := lookPath("definitely-not-a-real-binary-xyz"); err == nil {
 		t.Fatal("an unknown binary resolved")
+	}
+}
+
+// The browser Facet installed is found under either name it ships with, and
+// both renderers are handed it, HyperFrames unless the person named a
+// browser for it themselves.
+func TestPrivateBrowserIsSharedWithHyperFrames(t *testing.T) {
+	root := fakeRuntime(t)
+	t.Setenv(hyperframesBrowserEnv, "")
+	for _, name := range []string{"REMOTION_BROWSER_EXECUTABLE", "PUPPETEER_EXECUTABLE_PATH", "CHROME_PATH"} {
+		t.Setenv(name, "")
+	}
+	if privateBrowser() != "" {
+		t.Fatal("a browser was found in an empty runtime")
+	}
+	name := "chrome-headless-shell" + exeSuffix()
+	if runtime.GOOS != "windows" {
+		name = "headless_shell"
+	}
+	browser := filepath.Join(root, "dependencies", "browser", name)
+	writeExecutable(t, browser)
+	if got := privateBrowser(); !sameFile(got, browser) {
+		t.Fatalf("privateBrowser() = %q, want %q", got, browser)
+	}
+	if got := findBrowserExecutable(); !sameFile(got, browser) {
+		t.Fatalf("a Remotion render would use %q, not the private browser", got)
+	}
+	env := hyperframesEnvironment()
+	if len(env) == 0 || env[len(env)-1] != hyperframesBrowserEnv+"="+privateBrowser() {
+		t.Fatalf("HyperFrames is not handed the private browser: %v", env[max(0, len(env)-1):])
+	}
+	t.Setenv(hyperframesBrowserEnv, "/the/person's/chrome")
+	if hyperframesEnvironment() != nil {
+		t.Fatal("the person's own HYPERFRAMES_BROWSER_PATH was overridden")
 	}
 }
 
