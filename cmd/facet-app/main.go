@@ -6,11 +6,12 @@
 //	facet-app hook                          the hook process the kernel starts
 //	facet-app version
 //
-// It finds its parts beside itself, as the App's archive lays them out:
-// kernel/compa-kernel and toolkit/bin/facet (FACET_APP_KERNEL and
-// FACET_APP_FACET override them for development). Its data lives in a folder
-// of its own (FACET_APP_HOME or --data overrides it), so it never touches a
-// Compa or a Facet the person installed.
+// It finds its parts where the installer lays them out, in one programs
+// folder that is also a facet runtime: bin/facet-app and bin/facet side by
+// side, and kernel/compa-kernel (FACET_APP_KERNEL and FACET_APP_FACET
+// override them for development). Its data lives in a folder of its own
+// (FACET_APP_HOME or --data overrides it), so it never touches a Compa or a
+// Facet the person configured.
 package main
 
 import (
@@ -147,6 +148,11 @@ func part(env, relative string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		// Started through a link, such as ~/.local/bin/facet-app, the parts
+		// are beside the program the link names.
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = resolved
+		}
 		path = filepath.Join(filepath.Dir(exe), relative)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -217,11 +223,11 @@ func (a *app) SetModel(ctx context.Context, m window.Model) error {
 }
 
 func run(noBrowser bool, data string) error {
-	kernelPath, err := part("FACET_APP_KERNEL", filepath.Join("kernel", exeName("compa-kernel")))
+	kernelPath, err := part("FACET_APP_KERNEL", filepath.Join("..", "kernel", exeName("compa-kernel")))
 	if err != nil {
 		return err
 	}
-	facetPath, err := part("FACET_APP_FACET", filepath.Join("toolkit", "bin", exeName("facet")))
+	facetPath, err := part("FACET_APP_FACET", exeName("facet"))
 	if err != nil {
 		return err
 	}
