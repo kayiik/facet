@@ -70,8 +70,8 @@ TEXT_SUFFIXES = {"", ".json", ".ts", ".tsx", ".md", ".txt", ".html", ".tsv", ".p
 SOURCE_TEXT_SUFFIXES = TEXT_SUFFIXES | {".go", ".mod", ".sum", ".s", ".yaml", ".yml", ".css", ".js", ".mjs", ".svg"}
 # The Go packages and embedded guidance a build of ./cmd/facet reads: the root
 # package (top-level *.go only), the command, the internal packages, and what
-# capability.go embeds.
-SOURCE_PATHS = ("go.mod", "go.sum", ":(glob)*.go", "cmd/facet", "internal", "skills", "agents", "pipelines", "guidance", "styles", "schemas")
+# capability.go embeds. The App's packages (internal/app) are not among them.
+SOURCE_PATHS = ("go.mod", "go.sum", ":(glob)*.go", "cmd/facet", "internal", ":(exclude)internal/app", "skills", "agents", "pipelines", "guidance", "styles", "schemas")
 PLATFORMS = [(goos, goarch) for goos in ("windows", "linux", "darwin") for goarch in ("amd64", "arm64")]
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 BUILD_TIMEOUT = 900

@@ -19,6 +19,9 @@ build/
 bin/facet-*
 bin/facet
 !bin/*.js
+# `go build ./cmd/facet` and `go build ./cmd/facet-app` from the root.
+/facet
+/facet-app
 # Windows resource objects scripts/package-release.py generates for a build.
 cmd/facet/rsrc_windows_*.syso
 

@@ -14,6 +14,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # The Compa release the App is tested with, checked against its SHA256SUMS
+  # and its build provenance. The App's facet is built from the same commit.
+  COMPA_VERSION: 0.0.1
+
 # Dependency downloads are allowed. These gates use local fixtures, not Docker,
 # agent/model inference, live media providers, release certification or publishing.
 jobs:
@@ -66,10 +71,38 @@ jobs:
       - name: Install composer dependencies
         working-directory: remotion-composer
         run: npm ci --no-audit --no-fund
-      - name: Go short suite (no live providers)
+      - name: Fetch the App's pinned Compa kernel (checksum and provenance verified)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          case "$RUNNER_OS" in Windows) os=windows ext=zip exe=.exe ;; Linux) os=linux ext=tar.gz exe= ;; esac
+          asset="compa_${COMPA_VERSION}_${os}_amd64.${ext}"
+          dir="$RUNNER_TEMP/compa"
+          mkdir -p "$dir"
+          gh release download "v$COMPA_VERSION" --repo kayiik/compa --pattern "$asset" --pattern SHA256SUMS --dir "$dir"
+          (cd "$dir" && grep " $asset\$" SHA256SUMS | sha256sum -c -)
+          gh attestation verify "$dir/$asset" --repo kayiik/compa
+          if [ "$ext" = zip ]; then (cd "$dir" && unzip -q "$asset"); else tar -xzf "$dir/$asset" -C "$dir"; fi
+          kernel=$(find "$dir" -name "compa-kernel$exe" -type f | head -n 1)
+          test -n "$kernel"
+          echo "FACET_APP_KERNEL=$kernel" >> "$GITHUB_ENV"
+      - name: Build facet from this commit for the App's tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          exe=; [ "$RUNNER_OS" = Windows ] && exe=.exe
+          out="$RUNNER_TEMP/facet/bin/facet$exe"
+          CGO_ENABLED=0 go build -trimpath -o "$out" ./cmd/facet
+          "$out" version
+          echo "FACET_APP_FACET=$out" >> "$GITHUB_ENV"
+      - name: Go short suite (no live providers; the App's tests drive the real kernel and facet)
         run: go test -short ./... -count=1 -timeout=6m
       - name: Go vet
         run: go vet ./...
+      - name: Build the App
+        run: go build -o "${{ runner.temp }}" ./cmd/facet-app
       - name: Launcher and UAT unit tests (no Docker, no model calls)
         run: node --test "bin/*.test.js" "scripts/*.test.mjs"
       - name: Composer typecheck and build

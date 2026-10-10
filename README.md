@@ -12,6 +12,11 @@ approvals; Facet never calls a reasoning model and keeps no workflow state.
 - **Facet Bundle:** the `facet` skill, a `facet-<pack>` skill for each of seven
   production packs, and the `facet-creative` agent, installed into your CLI by
   `facet wire`.
+- **Facet App:** Facet for people who do not use a terminal. Facet's own
+  window, a local page in the browser, drives a private
+  [Compa](https://github.com/kayiik/compa) kernel with the Toolkit wired in,
+  and shares nothing with a Compa or a Facet you installed yourself. Paid
+  tools always ask in the window first.
 
 ## Install
 
@@ -92,6 +97,24 @@ go build ./cmd/facet
 go test ./...
 node --test "bin/*.test.js" "scripts/*.test.mjs"
 ```
+
+The App is `cmd/facet-app`, with its packages in `internal/app`: `kernel`
+(the agent engine, implemented with Compa's web channel and a stdio hook),
+`toolkit` (runs `facet` for the App's own screens, only tools that cannot
+charge and are read-only or local), `journeys` (projects, technical review
+and review decisions) and `window` (the page and its API, on `127.0.0.1`
+with a per-run token). It reaches the Toolkit only through the `facet`
+command. Its integration tests need a `compa-kernel` and a `facet`; without
+them they are skipped:
+
+```sh
+FACET_APP_KERNEL=/path/to/compa-kernel FACET_APP_FACET=/path/to/facet go test ./internal/app/...
+go run ./cmd/facet-app
+```
+
+On Windows, run them with a `compa-kernel` and a `facet` built from source,
+not with downloaded release binaries started from a temporary folder:
+Microsoft Defender has flagged release binaries started that way.
 
 ## License
 

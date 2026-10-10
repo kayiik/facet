@@ -15,7 +15,9 @@ test('shipping version surfaces identify the package.json release', () => {
   const exact = {
     'package-lock.json': new RegExp(`"version": "${escaped}"`),
     // Release builds stamp main.Version with -ldflags; source builds may add -dev.
+    // The App and the Toolkit share one version.
     'cmd/facet/main.go': new RegExp(`Version = "${escaped}(-dev)?"`),
+    'cmd/facet-app/main.go': new RegExp(`Version = "${escaped}(-dev)?"`),
     'installer/manifest.tsv': new RegExp(`^release\\tfacet\\t${escaped}\\t`, 'm'),
     '.release-harness/docker/Dockerfile': new RegExp(`^ARG FACET_VERSION=${escaped}$`, 'm'),
   };
