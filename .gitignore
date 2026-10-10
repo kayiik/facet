@@ -22,8 +22,9 @@ bin/facet
 # `go build ./cmd/facet` and `go build ./cmd/facet-app` from the root.
 /facet
 /facet-app
-# Windows resource objects scripts/package-release.py generates for a build.
+# Windows resource objects the release builds generate for a build.
 cmd/facet/rsrc_windows_*.syso
+cmd/facet-app/rsrc_windows_*.syso
 
 # Scratch probes from coordinating sessions. Several sessions can work in this
 # tree at once, and `git add -A` cannot tell a peer's temporary file from one's

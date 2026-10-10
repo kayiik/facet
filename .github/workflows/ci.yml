@@ -113,6 +113,8 @@ jobs:
         run: node --test "tests/*.test.mjs"
       - name: Third-party notices generator tests (current platform)
         run: python -m unittest discover -s scripts -p test_generate_notices.py -v
+      - name: Release contract tests
+        run: python -m unittest discover -s scripts -p test_release_contract.py -v
       - name: Third-party notices for every release target
         if: runner.os == 'Linux'
         shell: bash
@@ -129,3 +131,26 @@ jobs:
         run: ./scripts/test-release-installer.ps1
       - name: npm content and version checks (not binary distribution)
         run: node scripts/release-package-smoke.mjs
+
+  # Builds both products for all six targets on one runner, as the release
+  # does, and checks every archive against manifest.tsv; then runs this
+  # runner's facet, facet-app and compa-kernel from the archives.
+  release-build:
+    name: Release build (every target)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build core and app for every target
+        run: python scripts/build-release.py --out "$RUNNER_TEMP/release"
+      - name: Verify the release and run the native products
+        run: python scripts/verify-release.py --directory "$RUNNER_TEMP/release" --commit "$GITHUB_SHA" --smoke
