@@ -1797,6 +1797,12 @@ func runCommandDirContext(parent context.Context, timeout time.Duration, dir, pr
 // diagnostics on stderr would otherwise corrupt. On a timeout the bounded
 // stdout seen so far is returned with the error.
 func runCommandDirOutput(parent context.Context, timeout time.Duration, dir, program string, args ...string) ([]byte, []byte, error) {
+	return runCommandDirOutputEnv(parent, timeout, dir, nil, program, args...)
+}
+
+// runCommandDirOutputEnv is runCommandDirOutput with the program's
+// environment; nil inherits this process's.
+func runCommandDirOutputEnv(parent context.Context, timeout time.Duration, dir string, env []string, program string, args ...string) ([]byte, []byte, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	resolved, err := lookPath(program)
@@ -1806,6 +1812,9 @@ func runCommandDirOutput(parent context.Context, timeout time.Duration, dir, pro
 	cmd := newCommand(ctx, resolved, args...)
 	if dir != "" {
 		cmd.Dir = dir
+	}
+	if env != nil {
+		cmd.Env = env
 	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

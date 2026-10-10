@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/kayiik/facet/internal/bundle"
+	"github.com/kayiik/facet/internal/components"
 	"github.com/kayiik/facet/internal/doctor"
 	"github.com/kayiik/facet/internal/hook"
 	"github.com/kayiik/facet/internal/mcpserver"
@@ -35,6 +36,10 @@ Commands:
   pipelines <op>     List the production pipelines, or describe one (and one stage)
   guidance [path]    Read Facet's bundled guidance, pipelines, styles and record schemas
   doctor             Inspect dependencies, runtimes, and %d tools
+  components         Show the components Facet's tools run on, and which are missing
+  install <name>...  Install components beside facet (pinned, checksum-verified)
+  remove <name>...   Remove components facet install installed
+  setup              Ask which components to install, and install them
   mcp                Serve Facet's tools to an agent over MCP (stdio)
   wire               Wire Facet into an agentic CLI at user or project scope
   bundle             Build harness-native bundle layouts for packaging
@@ -94,6 +99,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return 0
+
+	case "components", "install", "remove", "setup":
+		return components.CLI(args, os.Stdin, stdout, stderr, Version)
 
 	case "mcp":
 		fs := flag.NewFlagSet("mcp", flag.ExitOnError)

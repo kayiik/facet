@@ -23,7 +23,7 @@ func TestEnvVarsCoverEveryVariableTheToolsRead(t *testing.T) {
 	dependency := regexp.MustCompile(`env(?:Any)?Dependency\(([^)]*)\)`)
 	quoted := regexp.MustCompile(`"([A-Za-z_][A-Za-z0-9_]*)"`)
 	identifier := regexp.MustCompile(`(?:Getenv|LookupEnv)\(([A-Za-z_][A-Za-z0-9_]*)\)`)
-	constants := map[string]string{"ComposerDirEnv": ComposerDirEnv, "hyperframesEnv": hyperframesEnv}
+	constants := map[string]string{"ComposerDirEnv": ComposerDirEnv, "hyperframesEnv": hyperframesEnv, "hyperframesBrowserEnv": hyperframesBrowserEnv}
 
 	files, err := filepath.Glob("*.go")
 	if err != nil {

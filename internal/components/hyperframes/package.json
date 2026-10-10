@@ -1,0 +1,13 @@
+{
+  "name": "facet-hyperframes",
+  "private": true,
+  "dependencies": {
+    "hyperframes": "0.8.46"
+  },
+  "allowScripts": {
+    "@google/genai@1.52.0": true,
+    "esbuild@0.25.12": true,
+    "onnxruntime-node@1.21.1": true,
+    "protobufjs@7.6.6": true
+  }
+}

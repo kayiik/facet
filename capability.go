@@ -19,6 +19,14 @@ import (
 //go:embed skills agents pipelines all:guidance styles schemas
 var Assets embed.FS
 
+// Composer holds the Remotion composer Facet renders with: its sources and
+// package files, as composer-manifest.json allows them. `facet install
+// remotion` writes it beside the Toolkit and installs the packages its
+// lockfile pins.
+//
+//go:embed remotion-composer/package.json remotion-composer/package-lock.json remotion-composer/tsconfig.json remotion-composer/composer-manifest.json remotion-composer/src
+var Composer embed.FS
+
 // GuidanceRoots are the top-level folders the guidance reader serves.
 var GuidanceRoots = []string{"skills", "agents", "pipelines", "guidance", "styles", "schemas"}
 

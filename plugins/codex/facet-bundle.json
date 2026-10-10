@@ -59,8 +59,8 @@
     },
     {
       "path": ".mcp.json",
-      "bytes": 1483,
-      "digest": "sha256:05faccb5df5a2f3b43d9752550c7ffcdc3a601f5bfa97779687e7821cf6fdf6e",
+      "bytes": 1519,
+      "digest": "sha256:c9cb818fbdd12a49c3019a2865c681fe6f4c1596f15a6a241ac19f100401154a",
       "kind": "mcp"
     },
     {
@@ -70,5 +70,5 @@
       "kind": "skill"
     }
   ],
-  "bundle_digest": "sha256:e1b0eeac04304f25f95c323ed064c3d5b163c1b06e2ba608ccfa8d63579f652a"
+  "bundle_digest": "sha256:c55d42b623a7aa72828e018571cfb9e54e5fa8c1bca3a0b2862105efbd3647ce"
 }

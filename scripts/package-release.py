@@ -68,10 +68,13 @@ TEXT_SUFFIXES = {"", ".json", ".ts", ".tsx", ".md", ".txt", ".html", ".tsv", ".p
 # Text in the source archive, normalized to LF so an archive packaged on a
 # Windows checkout embeds the same guidance bytes as one packaged in CI.
 SOURCE_TEXT_SUFFIXES = TEXT_SUFFIXES | {".go", ".mod", ".sum", ".s", ".yaml", ".yml", ".css", ".js", ".mjs", ".svg"}
-# The Go packages and embedded guidance a build of ./cmd/facet reads: the root
+# The Go packages and embedded files a build of ./cmd/facet reads: the root
 # package (top-level *.go only), the command, the internal packages, and what
-# capability.go embeds. The App's packages (internal/app) are not among them.
-SOURCE_PATHS = ("go.mod", "go.sum", ":(glob)*.go", "cmd/facet", "internal", ":(exclude)internal/app", "skills", "agents", "pipelines", "guidance", "styles", "schemas")
+# capability.go embeds, the composer included. The App's packages
+# (internal/app) are not among them.
+SOURCE_PATHS = ("go.mod", "go.sum", ":(glob)*.go", "cmd/facet", "internal", ":(exclude)internal/app", "skills", "agents", "pipelines", "guidance", "styles", "schemas",
+                "remotion-composer/package.json", "remotion-composer/package-lock.json", "remotion-composer/tsconfig.json",
+                "remotion-composer/composer-manifest.json", "remotion-composer/src")
 PLATFORMS = [(goos, goarch) for goos in ("windows", "linux", "darwin") for goarch in ("amd64", "arm64")]
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 BUILD_TIMEOUT = 900

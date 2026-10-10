@@ -197,7 +197,26 @@ func runHyperFrames(ctx context.Context, tmo time.Duration, workspace string, re
 			return nil, nil, failure("dependency_missing", "ffmpeg is required to render with HyperFrames", nil)
 		}
 	}
-	return runCommandDirOutput(ctx, tmo, workspace, "node", append([]string{entry}, args...)...)
+	return runCommandDirOutputEnv(ctx, tmo, workspace, hyperframesEnvironment(), "node", append([]string{entry}, args...)...)
+}
+
+// hyperframesBrowserEnv names the browser HyperFrames renders with.
+const hyperframesBrowserEnv = "HYPERFRAMES_BROWSER_PATH"
+
+// hyperframesEnvironment hands HyperFrames the browser a Remotion render
+// uses: the headless shell Facet installed, else one already on the computer,
+// so both renderers draw with one browser and HyperFrames downloads none of
+// its own into the person's cache. A browser the person named for HyperFrames
+// stays theirs.
+func hyperframesEnvironment() []string {
+	if strings.TrimSpace(os.Getenv(hyperframesBrowserEnv)) != "" {
+		return nil
+	}
+	browser := findBrowserExecutable()
+	if browser == "" {
+		return nil
+	}
+	return append(os.Environ(), hyperframesBrowserEnv+"="+browser)
 }
 
 // hyperframesFailure prefixes a CLI failure with the operation while keeping

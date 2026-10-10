@@ -14,15 +14,18 @@ import (
 // runtime directory, the parent of the directory holding the executable:
 //
 //	<runtime>/bin/facet[.exe]
-//	<runtime>/dependencies/remotion-composer/  composer sources (+ node_modules)
-//	<runtime>/dependencies/node/          optional private Node (node.exe, or bin/node)
-//	<runtime>/dependencies/piper/         Python venv (Scripts\piper.exe, or bin/piper)
+//	<runtime>/dependencies/ffmpeg/bin/        private FFmpeg and FFprobe
+//	<runtime>/dependencies/node/              optional private Node (node.exe, or bin/node)
+//	<runtime>/dependencies/browser/           Chrome headless shell both renderers use
+//	<runtime>/dependencies/remotion-composer/ composer sources (+ node_modules)
+//	<runtime>/dependencies/piper/             Python venv (Scripts\piper.exe, or bin/piper)
 //	<runtime>/dependencies/voices/<voice>.onnx (+ .onnx.json)
 //	<runtime>/dependencies/hyperframes/node_modules/hyperframes/bin/hyperframes.mjs
 //
-// Resolving these relative to the executable makes an installed Facet
-// independent of PATH, of the working directory and of whatever launcher
-// started it, while a development build still finds tools on PATH.
+// `facet install` puts the components there. Resolving them relative to the
+// executable makes an installed Facet independent of PATH, of the working
+// directory and of whatever launcher started it, while a development build
+// still finds tools on PATH.
 
 // executablePath locates the running executable. A variable so tests can
 // place a fake runtime around a fake executable.
@@ -40,6 +43,18 @@ func runtimeRoot() string {
 	return filepath.Dir(filepath.Dir(exe))
 }
 
+// RuntimeRoot returns the runtime directory this facet belongs to, or "".
+func RuntimeRoot() string { return runtimeRoot() }
+
+// UseExecutable makes the toolbox resolve its runtime as if it ran from exe,
+// and returns the function that undoes it. Tests of packages built on the
+// toolbox use it to lay out a runtime of their own.
+func UseExecutable(exe string) (restore func()) {
+	previous := executablePath
+	executablePath = func() (string, error) { return exe, nil }
+	return func() { executablePath = previous }
+}
+
 // runtimeDependency joins parts under <runtime>/dependencies, or returns ""
 // when the runtime directory is unknown.
 func runtimeDependency(parts ...string) string {
@@ -50,12 +65,21 @@ func runtimeDependency(parts ...string) string {
 	return filepath.Join(append([]string{root, "dependencies"}, parts...)...)
 }
 
+// RuntimeDependency joins parts under <runtime>/dependencies, or returns "".
+func RuntimeDependency(parts ...string) string { return runtimeDependency(parts...) }
+
 // runtimeBinary returns the private copy of program installed under
 // <runtime>/dependencies, or "" when there is none. Only programs the
 // installer actually places there are looked up.
 func runtimeBinary(program string) string {
 	var candidate string
-	switch strings.ToLower(strings.TrimSpace(program)) {
+	switch name := strings.ToLower(strings.TrimSpace(program)); name {
+	case "ffmpeg", "ffprobe":
+		if runtime.GOOS == "windows" {
+			candidate = runtimeDependency("ffmpeg", "bin", name+".exe")
+		} else {
+			candidate = runtimeDependency("ffmpeg", "bin", name)
+		}
 	case "node":
 		if runtime.GOOS == "windows" {
 			candidate = runtimeDependency("node", "node.exe")
@@ -74,6 +98,33 @@ func runtimeBinary(program string) string {
 	}
 	return candidate
 }
+
+// privateBrowser returns the Chrome headless shell installed under
+// <runtime>/dependencies/browser, or "". Chrome for Testing names it
+// chrome-headless-shell; the Linux arm64 build calls it headless_shell.
+func privateBrowser() string {
+	names := []string{"chrome-headless-shell", "headless_shell"}
+	if runtime.GOOS == "windows" {
+		names = []string{"chrome-headless-shell.exe"}
+	}
+	for _, name := range names {
+		if candidate := runtimeDependency("browser", name); candidate != "" && executableFile(candidate) {
+			return candidate
+		}
+	}
+	return ""
+}
+
+// BrowserExecutable returns the browser a Remotion render uses, resolved
+// exactly as the render resolves it, or "" when there is none.
+func BrowserExecutable() string { return findBrowserExecutable() }
+
+// PrivateBrowser returns the browser Facet installed, or "".
+func PrivateBrowser() string { return privateBrowser() }
+
+// HyperFramesEntry returns the HyperFrames CLI a hyperframes_compose run
+// uses, resolved exactly as the run resolves it.
+func HyperFramesEntry() (string, error) { return hyperframesEntry() }
 
 // executableFile reports whether path is a regular file this process could
 // execute. Windows has no execute bit, so a regular file is enough there.

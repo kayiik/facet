@@ -1110,8 +1110,13 @@ func findBrowserExecutable() string {
 	if env := os.Getenv("CHROME_PATH"); env != "" && fileExists(env) {
 		return env
 	}
-	// Prefer the renderer-managed headless browser over a desktop browser with
-	// user policies/profiles. Explicit overrides above retain precedence.
+	// The headless shell Facet installed (the browser component), shared with
+	// HyperFrames, then the one Remotion manages itself, both before a desktop
+	// browser with user policies/profiles. Explicit overrides above retain
+	// precedence.
+	if browser := privateBrowser(); browser != "" {
+		return browser
+	}
 	if composer, err := findComposerDir(); err == nil {
 		matches, _ := filepath.Glob(filepath.Join(composer, "node_modules", ".remotion", "chrome-headless-shell", "*", "*", "chrome-headless-shell*"))
 		for _, candidate := range matches {
