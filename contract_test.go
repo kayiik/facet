@@ -2,7 +2,6 @@ package facet
 
 import (
 	"encoding/json"
-	"errors"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -168,43 +167,66 @@ func TestFacetLinksNoAgentEngine(t *testing.T) {
 		}
 	}
 
-	// The binary's own import graph: what is actually linked.
-	out, err := exec.Command("go", "list", "-deps", "-f",
-		"{{.ImportPath}}|{{if .Module}}{{.Module.Path}}{{end}}", "./cmd/facet").Output()
-	if err != nil {
-		t.Fatalf("go list -deps ./cmd/facet: %v", err)
-	}
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		importPath, module, _ := strings.Cut(strings.TrimSpace(line), "|")
-		for _, engine := range agentEngineModules {
-			if strings.HasPrefix(module, engine) {
-				t.Errorf("cmd/facet links agent engine package %s (module %s)", importPath, module)
+	// Each binary's own import graph: what is actually linked.
+	for _, command := range []string{"./cmd/facet", "./cmd/facet-app"} {
+		for _, pkg := range linkedPackages(t, command) {
+			for _, engine := range agentEngineModules {
+				if strings.HasPrefix(pkg.module, engine) {
+					t.Errorf("%s links agent engine package %s (module %s)", command, pkg.importPath, pkg.module)
+				}
 			}
 		}
 	}
 }
 
-// The Facet App lives in its own repository (kayiik/facet-app) and reaches
-// the Toolkit only through the facet command (design rule R1). Its code (the
-// window, the kernel adapter, the journeys behind its screens) must not come
-// back here, where the Toolkit's release would carry it.
-func TestNoAppCodeInThisRepository(t *testing.T) {
-	for _, dir := range []string{"internal/journeys", "internal/window", "internal/kernel", "internal/studio", "cmd/facet-app"} {
-		if _, err := os.Stat(filepath.FromSlash(dir)); err == nil {
-			t.Errorf("%s is App code; it belongs in the kayiik/facet-app repository", dir)
-		} else if !errors.Is(err, fs.ErrNotExist) {
-			t.Fatal(err)
-		}
-	}
+// The Facet App and the Toolkit share this repository, its module and its
+// release, not code. The App (cmd/facet-app and internal/app) reaches the
+// Toolkit only through the facet command (design rule R1), and the facet
+// binary links nothing of the App.
+func TestToolkitAndAppStayApart(t *testing.T) {
 	entries, err := os.ReadDir("cmd")
 	if err != nil {
 		t.Fatal(err)
 	}
+	var commands []string
 	for _, entry := range entries {
-		if entry.Name() != "facet" {
-			t.Errorf("cmd/%s: the Toolkit builds one command, facet", entry.Name())
+		commands = append(commands, entry.Name())
+	}
+	if got := strings.Join(commands, " "); got != "facet facet-app" {
+		t.Errorf("cmd holds %s; this repository builds two commands, facet and facet-app", got)
+	}
+	const module = "github.com/kayiik/facet"
+	inApp := func(importPath string) bool {
+		return importPath == module+"/internal/app" || strings.HasPrefix(importPath, module+"/internal/app/")
+	}
+	for _, pkg := range linkedPackages(t, "./cmd/facet") {
+		if inApp(pkg.importPath) {
+			t.Errorf("cmd/facet links App package %s", pkg.importPath)
 		}
 	}
+	for _, pkg := range linkedPackages(t, "./cmd/facet-app") {
+		if pkg.module == module && pkg.importPath != module+"/cmd/facet-app" && !inApp(pkg.importPath) {
+			t.Errorf("cmd/facet-app links Toolkit package %s; the App runs the facet command instead", pkg.importPath)
+		}
+	}
+}
+
+type goPackage struct{ importPath, module string }
+
+// linkedPackages returns the packages a command links, with their modules.
+func linkedPackages(t *testing.T, command string) []goPackage {
+	t.Helper()
+	out, err := exec.Command("go", "list", "-deps", "-f",
+		"{{.ImportPath}}|{{if .Module}}{{.Module.Path}}{{end}}", command).Output()
+	if err != nil {
+		t.Fatalf("go list -deps %s: %v", command, err)
+	}
+	var packages []goPackage
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		importPath, module, _ := strings.Cut(strings.TrimSpace(line), "|")
+		packages = append(packages, goPackage{importPath, module})
+	}
+	return packages
 }
 
 // The Toolkit never calls a reasoning model: it calls media-generation

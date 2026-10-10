@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Facet</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header>
+    <span class="brand">facet<span class="dot">.</span></span>
+    <nav aria-label="Screens">
+      <a href="#/" data-view="conversation">Conversation</a>
+      <a href="#/projects" data-view="projects">Projects</a>
+      <a href="#/readiness" data-view="readiness">Readiness</a>
+    </nav>
+    <span id="status" class="pill">connecting</span>
+    <span id="model" class="model"></span>
+    <button id="change-model" type="button" class="link" hidden>Change model</button>
+  </header>
+
+  <main>
+    <div id="view-conversation" class="view">
+      <section id="setup" hidden>
+        <h1>Choose a model</h1>
+        <p>Facet's agent needs a language model. Enter an OpenAI-compatible endpoint, such as your provider's API or a local server, the model's name, and an API key if it needs one. The key is kept in the App's own folder on this computer.</p>
+        <p class="muted small">Projects and Readiness work without a model.</p>
+        <form id="setup-form">
+          <label>Endpoint <input name="endpoint" type="url" required placeholder="https://api.openai.com/v1"></label>
+          <label>Model <input name="model" required placeholder="gpt-5.1"></label>
+          <label>API key <input name="api_key" type="password" autocomplete="off"></label>
+          <button type="submit">Save and start</button>
+          <p id="setup-error" class="error" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="conversation" aria-live="polite"></section>
+    </div>
+
+    <div id="view-projects" class="view" hidden>
+      <h1>Projects</h1>
+      <p class="muted">The productions in the agent's workspace and the folders you opened. Select one to see what it holds; nothing here needs the agent.</p>
+      <p id="projects-error" class="error" role="alert"></p>
+      <div id="project-list" class="cards"></div>
+      <p id="projects-empty" class="empty" hidden>No projects yet. Create one, or open a folder that holds a production.</p>
+      <div class="columns">
+        <form id="create-form" class="panel">
+          <h2>New project</h2>
+          <label>Name <input name="name" required maxlength="120" placeholder="Spring launch film"></label>
+          <p class="muted small">Its folder goes in <span id="productions-root" class="path"></span>, where the agent can work on it.</p>
+          <div><button type="submit">Create</button></div>
+          <p class="error" role="alert"></p>
+        </form>
+        <form id="open-form" class="panel">
+          <h2>Open a folder</h2>
+          <label>Folder <input name="path" required autocomplete="off" spellcheck="false"></label>
+          <p class="muted small">Type or paste the folder's full path. Opening only reads the folder; nothing is written into it.</p>
+          <div><button type="submit" class="secondary">Open</button></div>
+          <p class="error" role="alert"></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="view-project" class="view" hidden>
+      <p class="crumbs"><a href="#/projects">Projects</a> <span aria-hidden="true">/</span> <span id="p-crumb"></span></p>
+      <p id="p-error" class="error" role="alert"></p>
+      <div id="p-body" hidden>
+        <h1 id="p-name"></h1>
+        <p id="p-path" class="path muted"></p>
+        <div id="p-stages" class="stages"></div>
+        <p id="p-outside" class="callout" hidden>This folder is outside the agent's workspace, so the agent cannot open it. You can still look at it, import media, review renders and record your decision here.</p>
+        <figure id="p-player" class="player" hidden>
+          <video id="p-video" controls preload="metadata"></video>
+          <figcaption id="p-video-caption" class="muted small"></figcaption>
+        </figure>
+
+        <section id="p-brief-block" class="block" hidden>
+          <h2>Brief</h2>
+          <pre id="p-brief" class="doc"></pre>
+        </section>
+
+        <section id="p-script-block" class="block" hidden>
+          <h2>Script</h2>
+          <table id="p-beats" hidden>
+            <thead><tr><th>#</th><th>Time</th><th>Beat</th><th>Narration or visual</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <details id="p-script-details">
+            <summary>Script text</summary>
+            <pre id="p-script" class="doc"></pre>
+          </details>
+        </section>
+
+        <section class="block">
+          <h2>Renders</h2>
+          <ul id="p-renders" class="rows"></ul>
+          <p id="p-renders-empty" class="muted small">No render yet. When the agent renders a video into renders/, it appears here to review.</p>
+        </section>
+
+        <section class="block">
+          <div class="block-head">
+            <h2>Media</h2>
+            <label class="file-button">
+              <input id="import-files" type="file" multiple accept="video/*,audio/*,image/*">
+              Import media
+            </label>
+          </div>
+          <p id="import-hint" class="muted small"></p>
+          <ul id="import-progress" class="rows"></ul>
+          <div id="p-media" class="tiles"></div>
+          <p id="p-media-empty" class="muted small">No media yet.</p>
+        </section>
+
+        <section id="review-block" class="block">
+          <h2>Review</h2>
+          <p id="review-none" class="muted small">There is no render to review yet.</p>
+          <div id="review-tools">
+            <label class="inline-label">Render <select id="review-render"></select></label>
+            <div id="p-report" class="report"></div>
+            <div class="columns">
+              <form id="review-form" class="panel">
+                <h3>Technical review</h3>
+                <p class="muted small">State what the render should be. Every check compares the file with what you state, never with itself.</p>
+                <label>Format
+                  <select name="preset">
+                    <option value="1920x1080x30">1920 × 1080, 30 fps (landscape)</option>
+                    <option value="1080x1920x30">1080 × 1920, 30 fps (vertical)</option>
+                    <option value="1080x1080x30">1080 × 1080, 30 fps (square)</option>
+                    <option value="1280x720x30">1280 × 720, 30 fps</option>
+                    <option value="3840x2160x30">3840 × 2160, 30 fps</option>
+                    <option value="">Other</option>
+                  </select>
+                </label>
+                <div class="fields">
+                  <label>Width <input name="width" type="number" min="1" step="1" required></label>
+                  <label>Height <input name="height" type="number" min="1" step="1" required></label>
+                  <label>Frame rate <input name="fps" type="number" min="0.01" step="any" required></label>
+                </div>
+                <div class="fields">
+                  <label>Length (s) <input name="duration" type="number" min="0.01" step="any" required></label>
+                  <label>Give or take (s) <input name="duration_tolerance" type="number" min="0.01" step="any" placeholder="0.1"></label>
+                  <label class="check"><input name="audio" type="checkbox" checked> Has sound</label>
+                </div>
+                <details>
+                  <summary>Codecs</summary>
+                  <div class="fields">
+                    <label>Video codec <input name="video_codec" placeholder="h264"></label>
+                    <label>Pixel format <input name="pixel_format" placeholder="yuv420p"></label>
+                    <label>Audio codec <input name="audio_codec" placeholder="aac"></label>
+                    <label>Sample rate <input name="audio_sample_rate" type="number" min="1" placeholder="48000"></label>
+                    <label>Channels <input name="audio_channels" type="number" min="1" placeholder="2"></label>
+                  </div>
+                </details>
+                <div><button type="submit">Run technical review</button></div>
+                <p class="error" role="alert"></p>
+              </form>
+              <form id="decision-form" class="panel">
+                <h3>Your decision</h3>
+                <div id="p-decision"></div>
+                <p class="muted small">A technical review is evidence; whether the render is accepted is yours to say. Your decision is recorded against the file's exact bytes.</p>
+                <div class="choice">
+                  <label class="check"><input type="radio" name="decision" value="accept" required> Accept</label>
+                  <label class="check"><input type="radio" name="decision" value="reject"> Reject</label>
+                </div>
+                <label>Note <textarea name="note" rows="3" placeholder="What works, or what must change"></textarea></label>
+                <div><button type="submit">Record decision</button></div>
+                <p class="error" role="alert"></p>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="p-files-block" class="block" hidden>
+          <h2>Files</h2>
+          <ul id="p-files" class="rows"></ul>
+        </section>
+      </div>
+    </div>
+
+    <div id="view-readiness" class="view" hidden>
+      <h1>Readiness</h1>
+      <p class="muted">What Facet's tools can do on this computer, before you ask the agent. Tools that may charge always ask you first.</p>
+      <p id="r-error" class="error" role="alert"></p>
+      <div id="r-summary" class="summary"></div>
+      <h2 id="r-missing-title">Needs setup</h2>
+      <ul id="r-missing" class="rows"></ul>
+      <h2>Ready</h2>
+      <ul id="r-ready" class="rows"></ul>
+    </div>
+  </main>
+
+  <footer id="footer">
+    <form id="composer">
+      <textarea id="input" rows="2" placeholder="Describe the video you want, or what to change." required></textarea>
+      <button id="send" type="submit">Send</button>
+      <button id="stop" type="button" class="secondary" disabled>Stop</button>
+    </form>
+  </footer>
+
+  <dialog id="approval">
+    <form method="dialog" id="approval-form">
+      <h2 id="approval-title">Approve this tool?</h2>
+      <p id="approval-paid" class="paid" hidden>This tool may charge your provider account. The cost is not known in advance.</p>
+      <p><strong id="approval-tool"></strong> <span id="approval-countdown" class="muted"></span></p>
+      <pre id="approval-args"></pre>
+      <div class="actions">
+        <button id="approve" value="approve">Approve</button>
+        <button id="deny" value="deny" class="secondary">Deny</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sheet">
+    <form method="dialog">
+      <h2 id="sheet-title"></h2>
+      <div id="sheet-body"></div>
+      <div class="actions"><button value="close" class="secondary">Close</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="conflict">
+    <form method="dialog">
+      <h2>Already in this project</h2>
+      <p><strong id="conflict-name"></strong> is already in the project's media. Replace it, or keep both?</p>
+      <div class="actions">
+        <button value="replace">Replace</button>
+        <button value="keep" class="secondary">Keep both</button>
+        <button value="skip" class="secondary">Skip</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
