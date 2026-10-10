@@ -154,3 +154,30 @@ jobs:
         run: python scripts/build-release.py --out "$RUNNER_TEMP/release"
       - name: Verify the release and run the native products
         run: python scripts/verify-release.py --directory "$RUNNER_TEMP/release" --commit "$GITHUB_SHA" --smoke
+
+  # installer/install.ps1 against two releases built here: install, add the
+  # App, verify, upgrade and uninstall, PATH and Start menu included.
+  installer-windows:
+    name: Installer (Windows)
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build two releases for windows/amd64
+        shell: pwsh
+        run: |
+          python scripts/build-release.py --out "$env:RUNNER_TEMP\release" --downloads "$env:RUNNER_TEMP\compa" --targets windows/amd64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/build-release.py --out "$env:RUNNER_TEMP\next" --downloads "$env:RUNNER_TEMP\compa" --targets windows/amd64 --version 0.0.2
+      - name: Install, add the App, verify, upgrade and uninstall
+        shell: pwsh
+        run: ./scripts/smoke-installer.ps1 -Release "$env:RUNNER_TEMP\release" -Next "$env:RUNNER_TEMP\next"
