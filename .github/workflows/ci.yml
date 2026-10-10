@@ -181,3 +181,33 @@ jobs:
       - name: Install, add the App, verify, upgrade and uninstall
         shell: pwsh
         run: ./scripts/smoke-installer.ps1 -Release "$env:RUNNER_TEMP\release" -Next "$env:RUNNER_TEMP\next"
+
+  # installer/install.sh the same way, on Linux and macOS.
+  installer-unix:
+    name: Installer (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Installer syntax
+        run: sh -n installer/install.sh
+      - name: Build two releases for this platform
+        run: |
+          target=$(python -c 'import platform; print({"Linux": "linux", "Darwin": "darwin"}[platform.system()] + "/" + {"x86_64": "amd64", "arm64": "arm64", "aarch64": "arm64"}[platform.machine()])')
+          python scripts/build-release.py --out "$RUNNER_TEMP/release" --downloads "$RUNNER_TEMP/compa" --targets "$target"
+          python scripts/build-release.py --out "$RUNNER_TEMP/next" --downloads "$RUNNER_TEMP/compa" --targets "$target" --version 0.0.2
+      - name: Install, add the App, verify, upgrade and uninstall
+        run: sh scripts/smoke-installer.sh "$RUNNER_TEMP/release" "$RUNNER_TEMP/next"
