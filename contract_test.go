@@ -279,75 +279,10 @@ func TestFacetCarriesNoRetiredKernelIdentity(t *testing.T) {
 	}
 }
 
-func TestLocalUATUsesTheModuleToolchain(t *testing.T) {
-	goMod, err := os.ReadFile("go.mod")
-	if err != nil {
-		t.Fatal(err)
-	}
-	version := ""
-	for _, line := range strings.Split(string(goMod), "\n") {
-		if fields := strings.Fields(line); len(fields) == 2 && fields[0] == "go" {
-			version = fields[1]
-		}
-	}
-	if version == "" {
-		t.Fatal("go.mod declares no go version")
-	}
-	dockerfile, err := os.ReadFile(".release-harness/docker/Dockerfile")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(dockerfile), "FROM golang:"+version+"-bookworm AS go") {
-		t.Fatalf("local UAT does not use the Go %s toolchain that go.mod requires", version)
-	}
-}
-
 func TestProductTextGuardCoversShippingDefinitions(t *testing.T) {
-	for _, name := range []string{".dockerignore", "Dockerfile", "scripts/package-release.py"} {
+	for _, name := range []string{".gitignore", "install.sh", "install.ps1", "scripts/build-release.py", ".github/workflows/release.yml", "Dockerfile"} {
 		if !isProductTextFile(name) {
 			t.Errorf("product text guard skips %s", name)
-		}
-	}
-}
-
-func TestLocalUATAllowsAnExplicitNPMRegistry(t *testing.T) {
-	checks := map[string][]string{
-		".release-harness/docker/Dockerfile": {
-			"ARG NPM_REGISTRY=https://registry.npmjs.org",
-			"ENV npm_config_registry=${NPM_REGISTRY}",
-			`npm install --global opencode-ai@1.18.29 --registry="${NPM_REGISTRY}"`,
-		},
-		"docker-compose.test.yml": {
-			"NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}",
-		},
-	}
-	for name, required := range checks {
-		data, err := os.ReadFile(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, term := range required {
-			if !strings.Contains(string(data), term) {
-				t.Errorf("%s does not contain %q", name, term)
-			}
-		}
-	}
-}
-
-func TestLocalUATIncludesTheInstallerPackage(t *testing.T) {
-	data, err := os.ReadFile(".dockerignore")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, required := range []string{
-		"!installer/", "!installer/**",
-		"!install.sh", "!install.ps1", "!package.json",
-		"!agents/", "!agents/**",
-		"!LICENSE", "!THIRD_PARTY_NOTICES.md",
-		"!capability.go",
-	} {
-		if !strings.Contains(string(data), required) {
-			t.Errorf(".dockerignore does not contain %q", required)
 		}
 	}
 }
@@ -509,32 +444,6 @@ func TestComposerSourceMatchesAllowlist(t *testing.T) {
 	sort.Strings(manifest.AllowedSourcePaths)
 	if strings.Join(actual, "\n") != strings.Join(manifest.AllowedSourcePaths, "\n") {
 		t.Fatalf("composer source differs from its allowlist:\ngot %v\nwant %v", actual, manifest.AllowedSourcePaths)
-	}
-}
-
-// Local UAT must exercise the product installer on an archive the release
-// packaging built, never a hand-built layout.
-func TestLocalUATRunsTheProductInstallerWithoutFabricatedLayout(t *testing.T) {
-	data, err := os.ReadFile(".release-harness/docker/Dockerfile")
-	if err != nil {
-		t.Fatal(err)
-	}
-	content := string(data)
-	for _, required := range []string{
-		`python3 scripts/package-release.py --os linux --arch "$arch" --out /tmp/facet-release`,
-		"bash /opt/facet-source/install.sh --yes --components remotion --no-path",
-		`--archive "/tmp/facet-release/facet-${FACET_VERSION}-linux-${arch}.zip"`,
-		`ENTRYPOINT ["node", "/opt/uat/uat-entrypoint.mjs"]`,
-	} {
-		if !strings.Contains(content, required) {
-			t.Errorf("Dockerfile does not contain %q", required)
-		}
-	}
-	for _, forbidden := range []string{"ln -s", ".facet/bin/facet", ".facet/bundle", "--target app", "facet-ui",
-		"go build", "zip -q", "/bundle/", "cp -R skills"} {
-		if strings.Contains(content, forbidden) {
-			t.Errorf("Dockerfile fabricates or references a removed layout: %q", forbidden)
-		}
 	}
 }
 

@@ -223,20 +223,35 @@ func newSandbox(t *testing.T, clis ...string) *sandbox {
 	for _, cli := range clis {
 		s.installFake(t, cli)
 	}
-	// A stable executable makes registrations deterministic.
+	// A fixed running executable makes registrations deterministic: the facet
+	// an installer put in its programs folder.
 	name := "facet"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	s.exe = filepath.Join(s.home, ".facet", "current", "bin", name)
+	s.exe = filepath.Join(root, "Programs", "Facet", "bin", name)
 	if err := os.MkdirAll(filepath.Dir(s.exe), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(s.exe, []byte("stable facet"), 0o755); err != nil {
+	if err := os.WriteFile(s.exe, []byte("installed facet"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// facet wire registers the running facet with its links resolved, which on
+	// Windows also expands a short (8.3) temporary folder such as RUNNER~1.
+	s.exe = resolved(t, s.exe)
+	t.Cleanup(toolbox.UseExecutable(s.exe))
 	t.Chdir(s.project)
 	return s
+}
+
+// resolved returns path with its links and Windows short names resolved.
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return real
 }
 
 func (s *sandbox) installFake(t *testing.T, cli string) {
@@ -600,7 +615,7 @@ func TestWireProjectScope(t *testing.T) {
 	// Only the registry changes in the home directory.
 	homeAfter := tree(t, s.home)
 	for name := range homeAfter {
-		if _, ok := homeBefore[name]; !ok && name != ".facet/wiring.json" {
+		if _, ok := homeBefore[name]; !ok && name != ".facet/" && name != ".facet/wiring.json" {
 			t.Errorf("project-scope wiring wrote %s in the home directory", name)
 		}
 	}
@@ -920,34 +935,34 @@ func TestStatusReportsDrift(t *testing.T) {
 	}
 }
 
-func TestRewireFollowsTheStableExecutable(t *testing.T) {
+// facet wire registers the facet that runs it; another facet's status calls
+// that drift, and wiring again from it registers it instead.
+func TestRewireFollowsTheRunningExecutable(t *testing.T) {
 	s := newSandbox(t, "claude")
-	// Without ~/.facet/current, the running executable is registered.
-	if err := os.RemoveAll(filepath.Join(s.home, ".facet", "current")); err != nil {
-		t.Fatal(err)
-	}
 	mustRun(t, "claude")
-	running, _ := os.Executable()
-	if got := dig(readJSON(t, filepath.Join(s.home, ".claude.json")), "mcpServers", "facet", "command"); !samePath(fmt.Sprint(got), running) {
-		t.Fatalf("registered %v, want the running executable %s", got, running)
+	if got := dig(readJSON(t, filepath.Join(s.home, ".claude.json")), "mcpServers", "facet", "command"); got != s.exe {
+		t.Fatalf("registered %v, want the running facet %s", got, s.exe)
 	}
-	if err := os.MkdirAll(filepath.Dir(s.exe), 0o755); err != nil {
+	other := filepath.Join(s.root, "other", "bin", filepath.Base(s.exe))
+	if err := os.MkdirAll(filepath.Dir(other), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(s.exe, []byte("stable facet"), 0o755); err != nil {
+	if err := os.WriteFile(other, []byte("another facet"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if out := mustRun(t, "--status"); !strings.Contains(out, "stable executable is now another one") {
-		t.Errorf("status does not report the executable change:\n%s", out)
+	other = resolved(t, other)
+	t.Cleanup(toolbox.UseExecutable(other))
+	if out := mustRun(t, "--status"); !strings.Contains(out, "the MCP server runs "+s.exe+", not this facet") {
+		t.Errorf("status does not report the other executable:\n%s", out)
 	}
 	mustRun(t, "claude")
 	calls := s.calls(t)
 	last := calls[len(calls)-2:]
-	if last[0].Args[1] != "remove" || last[1].Args[1] != "add" || last[1].Args[len(last[1].Args)-2] != s.exe {
+	if last[0].Args[1] != "remove" || last[1].Args[1] != "add" || last[1].Args[len(last[1].Args)-2] != other {
 		t.Fatalf("re-registration calls = %+v", last)
 	}
-	if got := dig(readJSON(t, filepath.Join(s.home, ".claude.json")), "mcpServers", "facet", "command"); got != s.exe {
-		t.Fatalf("registered %v after rewiring, want %s", got, s.exe)
+	if got := dig(readJSON(t, filepath.Join(s.home, ".claude.json")), "mcpServers", "facet", "command"); got != other {
+		t.Fatalf("registered %v after rewiring, want %s", got, other)
 	}
 }
 
@@ -1118,7 +1133,7 @@ func TestArgumentHandling(t *testing.T) {
 			t.Errorf("%s: exit %d: %s", name, code, errOut)
 		}
 	}
-	if entries, _ := os.ReadDir(s.home); len(entries) != 1 { // only .facet/current from the sandbox
+	if entries, _ := os.ReadDir(s.home); len(entries) != 0 {
 		t.Errorf("argument errors wrote to the home directory: %v", entries)
 	}
 	req, _, err := parseArgs([]string{"--dry-run", "opencode,claude", "--project=" + s.project})
@@ -1146,20 +1161,12 @@ func TestArgumentHandling(t *testing.T) {
 	}
 }
 
-// FACET_HOME moves the wiring record and the stable executable together, so
-// a second Toolkit (the Facet App's) keeps its own wirings apart from the
-// user-wide one.
-func TestFacetHomeMovesTheRegistryAndTheStableExecutable(t *testing.T) {
+// FACET_HOME moves the wiring record, so a second Toolkit (the Facet App's)
+// keeps its own wirings apart from the user-wide one. The registered command
+// is still the facet that runs facet wire.
+func TestFacetHomeMovesTheRegistry(t *testing.T) {
 	s := newSandbox(t)
 	moved := filepath.Join(s.root, "app", "facet-home")
-	name := filepath.Base(s.exe)
-	appExe := filepath.Join(moved, "current", "bin", name)
-	if err := os.MkdirAll(filepath.Dir(appExe), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(appExe, []byte("app facet"), 0o755); err != nil {
-		t.Fatal(err)
-	}
 	t.Setenv("FACET_HOME", moved)
 	mustRun(t, "copilot")
 
@@ -1169,8 +1176,8 @@ func TestFacetHomeMovesTheRegistryAndTheStableExecutable(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(s.home, ".facet", "wiring.json")); !os.IsNotExist(err) {
 		t.Fatal("the user-wide wiring record was written although FACET_HOME is set")
 	}
-	if got := dig(readJSON(t, filepath.Join(s.home, ".copilot", "mcp-config.json")), "mcpServers", "facet", "command"); got != appExe {
-		t.Fatalf("registered %v, want %s", got, appExe)
+	if got := dig(readJSON(t, filepath.Join(s.home, ".copilot", "mcp-config.json")), "mcpServers", "facet", "command"); got != s.exe {
+		t.Fatalf("registered %v, want the running facet %s", got, s.exe)
 	}
 }
 

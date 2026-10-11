@@ -5,7 +5,7 @@
 #
 #   build/dev/bin/facet
 #   build/dev/dependencies/remotion-composer   (a link to this checkout's composer)
-#   build/dev/dependencies/hyperframes         (the pinned HyperFrames)
+#   build/dev/dependencies/hyperframes         (the pinned HyperFrames, from facet install)
 #
 # so the dev build finds its composer and HyperFrames the way an installed one
 # does, with no environment variables. Then it wires the dev build into your
@@ -33,14 +33,11 @@ if [ -z "${SKIP_COMPOSER:-}" ]; then
 fi
 [ -e "$deps/remotion-composer" ] || ln -s "$composer" "$deps/remotion-composer"
 
-hyper_dir="$deps/hyperframes"
-hyper_entry="$hyper_dir/node_modules/hyperframes/bin/hyperframes.mjs"
+hyper_entry="$deps/hyperframes/node_modules/hyperframes/bin/hyperframes.mjs"
 if [ -z "${SKIP_HYPERFRAMES:-}" ] && [ ! -f "$hyper_entry" ]; then
-  pin="$(awk -F'\t' '$1=="component" && $2=="hyperframes" {print $3; exit}' "$repo/installer/manifest.tsv")"
-  echo "facet: installing HyperFrames $pin"
-  mkdir -p "$hyper_dir"
-  [ -f "$hyper_dir/package.json" ] || echo '{"private":true}' > "$hyper_dir/package.json"
-  (cd "$hyper_dir" && npm install --no-audit --no-fund "hyperframes@$pin")
+  # The dev build installs HyperFrames beside itself, as an installed facet does.
+  echo "facet: installing HyperFrames"
+  "$exe" install hyperframes
 fi
 
 # An explicit override would win over the layout above and hide it.

@@ -156,97 +156,72 @@ func TestDoctorAgreesWithTheToolbox(t *testing.T) {
 	}
 }
 
-func TestDoctorReportsTheActiveRuntime(t *testing.T) {
-	home, _ := isolate(t)
-	if got := probeFacetRuntime(home, "2.0.0"); got.Status != StatusNotFound || !strings.Contains(got.Details, "current") {
-		t.Fatalf("no runtime: %+v", got)
-	}
-
-	osName, arch := runtime.GOOS, runtime.GOARCH
-	release := filepath.Join(home, ".facet", "runtimes", "2.0.0-"+osName+"-"+arch)
-	current := filepath.Join(home, ".facet", "current")
-	if err := os.MkdirAll(filepath.Join(release, "bin"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(release, current); err != nil {
-		// Unprivileged Windows accounts cannot create symlinks; a plain
-		// directory exercises the same reporting.
-		current = filepath.Join(home, ".facet", "current")
-		if err := os.MkdirAll(filepath.Join(current, "bin"), 0755); err != nil {
-			t.Fatal(err)
-		}
-		release = current
-	}
-	if got := probeFacetRuntime(home, "2.0.0"); got.Status != StatusWarning || !strings.Contains(got.Details, "no bin/facet") {
-		t.Fatalf("runtime without executable: %+v", got)
-	}
-
+// The doctor reports the runtime this facet belongs to, and what the
+// installer's receipt there records.
+func TestDoctorReportsTheRuntime(t *testing.T) {
+	isolate(t)
+	place := filepath.Join(t.TempDir(), "Programs", "Facet")
 	name := "facet"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	exe := filepath.Join(release, "bin", name)
-	if err := os.WriteFile(exe, []byte("fake"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	var probed string
-	saved := facetVersionOf
-	t.Cleanup(func() { facetVersionOf = saved })
-	facetVersionOf = func(path string) string { probed = path; return "2.0.0" }
+	exe := filepath.Join(place, "bin", name)
+	writeFixture(t, exe, "fake")
+	t.Cleanup(toolbox.UseExecutable(exe))
+	// The doctor reports paths with their links and Windows short names resolved.
+	exe, place = resolved(t, exe), resolved(t, place)
 
-	got := probeFacetRuntime(home, "2.0.0")
-	if got.Status != StatusOK || got.Version != "2.0.0" || got.Current != current {
-		t.Fatalf("matching runtime: %+v", got)
-	}
-	if !strings.HasSuffix(filepath.ToSlash(probed), "/.facet/current/bin/"+name) {
-		t.Errorf("probed %s, want the stable executable", probed)
-	}
-	if resolved, err := filepath.EvalSymlinks(release); err == nil && got.Target != resolved {
-		t.Errorf("target = %s, want %s", got.Target, resolved)
+	got := probeFacetRuntime("2.0.0")
+	if got.Runtime != place || got.Executable != exe || got.Status != StatusNotFound || !strings.Contains(got.Details, "not installed by Facet's installer") {
+		t.Fatalf("a runtime without a receipt: %+v", got)
 	}
 
-	got = probeFacetRuntime(home, "2.1.0")
-	if got.Status != StatusWarning || !strings.Contains(got.Details, "v2.0.0") || !strings.Contains(got.Details, "v2.1.0") {
-		t.Fatalf("mismatched runtime: %+v", got)
+	receipt := filepath.Join(place, "install-receipt.tsv")
+	writeFixture(t, receipt, "format\tfacet-install-v1\nversion\t2.0.0\ncommit\t"+strings.Repeat("a", 40)+
+		"\nrepository\tkayiik/facet\ntarget\twindows/amd64\nroot\t"+place+"\nproduct\tcore\nproduct\tapp\nfile\troot\tLICENSE\t"+strings.Repeat("b", 64)+"\n")
+	got = probeFacetRuntime("2.0.0")
+	if got.Status != StatusOK || got.Installed != "2.0.0" || strings.Join(got.Products, ",") != "core,app" || got.Details != "" {
+		t.Fatalf("an installed runtime: %+v", got)
 	}
-
 	var buf bytes.Buffer
 	formatDoctorReport(&DoctorReport{Facet: got}, &buf)
-	if !strings.Contains(buf.String(), current) || !strings.Contains(buf.String(), "facet v2.0.0") {
+	if !strings.Contains(buf.String(), place+" (installed: Facet 2.0.0, core and app)") {
 		t.Errorf("formatted runtime:\n%s", buf.String())
 	}
 
-	if v := versionFromRuntimeDir(filepath.Join("x", "2.0.0-rc.1-linux-arm64")); v != "2.0.0-rc.1" {
-		t.Errorf("versionFromRuntimeDir = %q", v)
+	got = probeFacetRuntime("2.1.0")
+	if got.Status != StatusWarning || !strings.Contains(got.Details, "Facet 2.0.0") || !strings.Contains(got.Details, "facet v2.1.0") {
+		t.Fatalf("a receipt for another release: %+v", got)
 	}
-	if v := versionFromRuntimeDir("current"); v != "" {
-		t.Errorf("versionFromRuntimeDir(current) = %q", v)
+
+	writeFixture(t, receipt, "format\tfacet-install-v0\nversion\t2.0.0\n")
+	if got = probeFacetRuntime("2.0.0"); got.Status != StatusWarning || !strings.Contains(got.Details, "receipt") {
+		t.Fatalf("a receipt of another format: %+v", got)
 	}
 }
 
-// FACET_HOME moves the active runtime the doctor checks, as it moves the
-// installer's and facet wire's.
-func TestDoctorFollowsFacetHome(t *testing.T) {
-	home, _ := isolate(t)
-	moved := filepath.Join(t.TempDir(), "app-facet")
-	t.Setenv(facethome.EnvVar, moved)
-	name := "facet"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
+// FACET_HOME moves Facet's records, not the runtime: that is wherever the
+// running facet is.
+func TestDoctorRuntimeIgnoresFacetHome(t *testing.T) {
+	isolate(t)
+	place := filepath.Join(t.TempDir(), "runtime")
+	exe := filepath.Join(place, "bin", "facet")
+	writeFixture(t, exe, "fake")
+	t.Cleanup(toolbox.UseExecutable(exe))
+	t.Setenv(facethome.EnvVar, filepath.Join(t.TempDir(), "app-facet"))
+	if got := probeFacetRuntime("2.0.0"); got.Runtime != resolved(t, place) {
+		t.Fatalf("FACET_HOME moved the runtime: %+v", got)
 	}
-	if err := os.MkdirAll(filepath.Join(moved, "current", "bin"), 0755); err != nil {
+}
+
+// resolved returns path with its links and Windows short names resolved.
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(moved, "current", "bin", name), []byte("fake"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	saved := facetVersionOf
-	t.Cleanup(func() { facetVersionOf = saved })
-	facetVersionOf = func(string) string { return "2.0.0" }
-	got := probeFacetRuntime(home, "2.0.0")
-	if got.Status != StatusOK || got.Current != filepath.Join(moved, "current") {
-		t.Fatalf("FACET_HOME runtime: %+v", got)
-	}
+	return real
 }
 
 func TestDoctorNamesV1IntegrationsAndTheirCleanup(t *testing.T) {

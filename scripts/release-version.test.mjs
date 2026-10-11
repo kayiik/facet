@@ -18,23 +18,19 @@ test('shipping version surfaces identify the package.json release', () => {
     // The App and the Toolkit share one version.
     'cmd/facet/main.go': new RegExp(`Version = "${escaped}(-dev)?"`),
     'cmd/facet-app/main.go': new RegExp(`Version = "${escaped}(-dev)?"`),
-    'installer/manifest.tsv': new RegExp(`^release\\tfacet\\t${escaped}\\t`, 'm'),
-    '.release-harness/docker/Dockerfile': new RegExp(`^ARG FACET_VERSION=${escaped}$`, 'm'),
   };
   for (const [path, pattern] of Object.entries(exact)) {
     assert.match(read(path), pattern, `${path} does not identify v${version}`);
   }
 });
 
-test('published installer checks run only as explicit post-release gates', () => {
-  const workflow = read('.github/workflows/bootstrap.yml');
-  assert.match(workflow, /name: Verify pinned published installer and handoff\s+if: github\.event_name == 'workflow_dispatch'/);
-  assert.match(workflow, /name: Published one-liner installs the facet runtime[^\n]*\s+if: github\.event_name == 'workflow_dispatch'/);
-});
-
-test('releases are drafted from tags and never replace published assets', () => {
+test('a release is drafted from a tag on main and never replaces a published one', () => {
   const workflow = read('.github/workflows/release.yml');
-  assert.match(workflow, /if: startsWith\(github\.ref, 'refs\/tags\/v'\)/);
-  assert.match(workflow, /gh release create "\$GITHUB_REF_NAME" --verify-tag --draft /);
-  assert.doesNotMatch(workflow, /--clobber|gh release upload|gh release edit/);
+  assert.match(workflow, /^ {4}tags: \['v\*'\]$/m);
+  assert.match(workflow, /"\$GITHUB_REF_NAME" != "v\$version"/, 'the tag must name package.json\'s version');
+  assert.match(workflow, /git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/, 'the tag must be on main');
+  assert.match(workflow, /name: Draft the release\s+if: github\.event_name == 'push'/, 'a dry run must not release');
+  assert.match(workflow, /-F draft=true/);
+  assert.match(workflow, /a published release is never replaced/);
+  assert.doesNotMatch(workflow, /--clobber|draft=false|make_latest|gh release edit|branches:/);
 });

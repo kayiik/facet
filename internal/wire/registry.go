@@ -37,8 +37,7 @@ type Wiring struct {
 	// Executable is the facet executable registered as the MCP server.
 	Executable string `json:"executable"`
 	// ExplicitExecutable is set when --exe chose Executable: it is not
-	// drift when the stable executable is another one, and --refresh keeps
-	// it.
+	// drift when another facet runs, and --refresh keeps it.
 	ExplicitExecutable bool   `json:"explicit_executable,omitempty"`
 	WiredAt            string `json:"wired_at"`
 	// Pending marks a record saved before its changes were applied; a run

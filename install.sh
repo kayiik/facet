@@ -1,786 +1,1087 @@
-#!/usr/bin/env bash
-# Facet installer for Linux and macOS.
-#
-# Installs one Facet runtime per user under ~/.facet/runtimes/<version>-<os>-<arch>,
-# verifies it, activates it through the ~/.facet/current symbolic link and adds
-# ~/.facet/current/bin to the user PATH. FACET_HOME, when set, replaces ~/.facet.
-# Wiring Facet into agentic CLIs is a separate, explicit step (`facet wire`),
-# offered at the end; wirings already recorded are refreshed to the active
-# runtime after every install, update and rollback. Nothing here edits project
-# files or CLI instruction files.
-#
-# A release ships a prebuilt facet for each platform. With --from-source (Facet
-# 2.2.0 and later), facet is built here instead, from the release's source
-# archive, by the official Go toolchain pinned with its SHA-256 in
-# installer/manifest.tsv; Go and its build cache are removed afterwards.
-set -euo pipefail
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-MANIFEST="$SCRIPT_DIR/installer/manifest.tsv"
-die() { printf '%s\n' "$*" >&2; exit 1; }
-definition() {
-    awk -F '\t' -v id="$1" -v col="$2" '$2==id {sub(/\r$/, "", $NF); print $col; n++} END {if(n!=1)exit 1}' "$MANIFEST"
-}
-[[ -f "$MANIFEST" ]] || die 'Run install.sh from the complete installer package.'
-[[ $(definition layout 3) == 2 ]] || die 'Unsupported installer manifest schema.'
+#!/bin/sh
+# Standalone POSIX entry: definitions are consumed before anything reads stdin.
+# Installs, updates, verifies and removes Facet: the facet command and the Facet App.
+# One installer and one receipt for both products; no Python, Go or Node.
 
-usage() {
-    cat <<'EOF'
-Usage: bash install.sh [options]
-
-  --action install|update|rollback|uninstall   Default: install
-  --version VERSION                            Release to install or roll back to
-  --components remotion,piper,hyperframes|all|none   Default: remotion,piper
-  --wire claude,codex,copilot,opencode,compa|all|none  Wire CLIs after installing
-  --scope user|project                         Wiring scope (default: user)
-  --project DIR                                Project to wire (implies --scope project)
-  --archive ZIP --checksums FILE               Install from local release files
-  --from-source                                Build facet here with the pinned Go toolchain
-  --toolchain FILE                             The Go download to build with (implies --from-source)
-  --yes                                        Noninteractive
-  --no-path                                    Do not add ~/.facet/current/bin to PATH
-  --skip-verify                                Skip media verification (reported as unverified)
-  --purge                                      With uninstall: also delete installed runtimes
-  --plain                                      Plain prompts
-  --verbose                                    Show subprocess output
-EOF
+fb_fail() {
+    printf 'facet install: %s\n' "$*" >&2
+    exit 1
 }
 
-VERSION=${FACET_VERSION:-}; ACTION=${FACET_ACTION:-}; COMPONENTS=${FACET_COMPONENTS:-}
-WIRE=${FACET_WIRE:-}; SCOPE=${FACET_SCOPE:-}; PROJECT=${FACET_PROJECT:-}
-ARCHIVE=''; SUMS=''; TOOLCHAIN=''; FROM_SOURCE=${FACET_FROM_SOURCE:-0}
-YES=${FACET_YES:-0}; NO_PATH=${FACET_NO_PATH:-0}; SKIP_VERIFY=${FACET_SKIP_VERIFY:-0}
-PURGE=${FACET_PURGE:-0}; PLAIN=${FACET_PLAIN:-0}; DETAIL=${FACET_VERBOSE:-0}
-while (($#)); do
-    case "$1" in
-        --action|--version|--components|--wire|--scope|--project|--archive|--checksums|--toolchain)
-            (($# >= 2)) || die "Missing value for $1"
-            case "$1" in
-                --action) ACTION=$2;; --version) VERSION=$2;; --components) COMPONENTS=$2;;
-                --wire) WIRE=$2;; --scope) SCOPE=$2;; --project) PROJECT=$2;;
-                --archive) ARCHIVE=$2;; --checksums) SUMS=$2;; --toolchain) TOOLCHAIN=$2;;
-            esac; shift 2;;
-        --from-source) FROM_SOURCE=1; shift;;
-        --yes) YES=1; shift;;
-        --no-path) NO_PATH=1; shift;;
-        --skip-verify) SKIP_VERIFY=1; shift;;
-        --purge) PURGE=1; shift;;
-        --plain) PLAIN=1; shift;;
-        --verbose) DETAIL=1; shift;;
-        --help|-h) usage; exit 0;;
-        *) die "Unknown option: $1 (see --help)";;
+fb_path() (
+    fb_p=$1
+    [ -n "$fb_p" ] || fb_fail "An empty path is not allowed"
+    printf '%s\n' "$fb_p" | awk 'NR != 1 || /[[:cntrl:]]/ {bad=1} END {exit bad}' ||
+        fb_fail "Paths must not contain control characters"
+    case "$fb_p" in
+        *\\*) fb_fail "Backslashes are not supported in Unix paths" ;;
+        /*) ;;
+        *) fb_p=$fb_cwd/$fb_p ;;
     esac
-done
-VERSION_EXPLICIT=0; [[ -z "$VERSION" ]] || VERSION_EXPLICIT=1
-VERSION=${VERSION:-$(definition facet 3)}
-[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]] || die 'Invalid release version.'
-ACTION_EXPLICIT=0; [[ -z "$ACTION" ]] || ACTION_EXPLICIT=1
-ACTION=${ACTION:-install}
-case "$ACTION" in install|update|rollback|uninstall) ;; *) die 'Choose --action install, update, rollback or uninstall.';; esac
-[[ -z "$ARCHIVE" && -z "$SUMS" || -n "$ARCHIVE" && -n "$SUMS" ]] || die 'Supply both --archive and --checksums.'
-[[ -z "$PROJECT" ]] || SCOPE=project
-SCOPE=${SCOPE:-user}
-case "$SCOPE" in user|project) ;; *) die 'Choose --scope user or project.';; esac
-[[ "$SCOPE" != project || -n "$PROJECT" || $YES != 1 ]] || die '--scope project requires --project DIR.'
-case $(uname -s) in Linux) OS=linux;; Darwin) OS=darwin;; *) die 'Use install.ps1 on Windows.';; esac
-case $(uname -m) in x86_64|amd64) ARCH=amd64;; arm64|aarch64) ARCH=arm64;; *) die 'Unsupported architecture.';; esac
-absolute() { case "$1" in /*) printf '%s' "$1";; *) printf '%s/%s' "$PWD" "$1";; esac; }
-if [[ -n "$ARCHIVE" ]]; then ARCHIVE=$(absolute "$ARCHIVE"); SUMS=$(absolute "$SUMS"); fi
-if [[ -n "$TOOLCHAIN" ]]; then TOOLCHAIN=$(absolute "$TOOLCHAIN"); FROM_SOURCE=1; fi
-[[ "$FROM_SOURCE" == 0 || "$FROM_SOURCE" == 1 ]] || die 'FACET_FROM_SOURCE must be 0 or 1.'
-if [[ -n "$PROJECT" ]]; then PROJECT=$(absolute "$PROJECT"); fi
+    printf '%s\n' "$fb_p" | awk -F / '{
+        n=0
+        for(i=1;i<=NF;i++) {
+            if($i=="" || $i==".") continue
+            if($i=="..") {if(n>0) n--; continue}
+            parts[++n]=$i
+        }
+        result=""
+        for(i=1;i<=n;i++) result=result "/" parts[i]
+        if(result=="") print "/"
+        else print result
+    }'
+)
 
-# FACET_HOME moves Facet's home folder (runtimes, current, wiring record). It is
-# made absolute once and handed to every facet this script runs, so they agree.
-if [[ -n "${FACET_HOME:-}" ]]; then
-    FACET_HOME_DIR=$(absolute "$FACET_HOME"); export FACET_HOME="$FACET_HOME_DIR"
-else
-    FACET_HOME_DIR="$HOME/.facet"
-fi
-# Facet 1.x kept its releases in ~/.facet whatever FACET_HOME says.
-LEGACY_HOME="$HOME/.facet"
-RUNTIMES="$FACET_HOME_DIR/runtimes"
-CURRENT="$FACET_HOME_DIR/current"
-STATE_FILE="$FACET_HOME_DIR/installer.json"
-WIRING_FILE="$FACET_HOME_DIR/wiring.json"
-PROFILE_START='# >>> facet path >>>'
-PROFILE_END='# <<< facet path <<<'
-SUPPORTED_CLIS='claude codex copilot opencode compa'
-
-ask() {
-    local answer
-    printf '%s [%s]: ' "$1" "$2" >&2
-    IFS= read -r answer || die 'Interactive input ended; use --yes with explicit options.'
-    printf '%s' "${answer:-$2}"
-}
-RICH=0
-if [[ $YES != 1 && $PLAIN != 1 && -z ${NO_COLOR:-} && -t 0 && -t 2 && ${TERM:-dumb} != dumb ]]; then RICH=1; fi
-section() { if [[ $RICH == 1 ]]; then printf '\n\033[36;1m%s\033[0m\n' "$1"; else printf '\n%s\n' "$1"; fi; }
-# Menu drawing goes to stderr; stdout carries only the selected value.
-# Plain mode prints numbered labels and maps numeric answers to values.
-choose() (
-    title=$1; multiple=$2; defaults=$3; shift 3
-    values=(); labels=(); checked=(); index=0
-    while (($#)); do values+=("$1"); labels+=("$2"); shift 2; done
-    if [[ $RICH != 1 ]]; then
-        for ((i=0;i<${#values[@]};i++)); do printf '  %d. %s\n' "$((i+1))" "${labels[i]}" >&2; done
-        answer=$(ask "$title" "$defaults")
-        result=''
-        IFS=',' read -r -a picks <<< "$answer"
-        for pick in "${picks[@]:-}"; do
-            pick=${pick// /}; [[ -n "$pick" ]] || continue
-            if [[ "$pick" =~ ^[0-9]+$ ]]; then
-                ((pick >= 1 && pick <= ${#values[@]})) || { printf 'No choice %s.\n' "$pick" >&2; exit 1; }
-                pick=${values[pick-1]}
-            fi
-            result="${result:+$result,}$pick"
-        done
-        printf '%s' "${result:-none}"; exit 0
-    fi
-    for ((i=0;i<${#values[@]};i++)); do
-        checked+=(0)
-        if [[ ",$defaults," == *",${values[i]},"* ]]; then checked[i]=1; [[ $multiple == 1 ]] || index=$i; fi
-    done
-    old_tty=$(stty -g)
-    trap 'stty "$old_tty"; printf "\033[?25h" >&2' EXIT
-    trap 'exit 130' INT TERM
-    stty -echo -icanon min 1 time 0
-    printf '\n\033[36;1m? %s\033[0m\n\033[?25l' "$title" >&2
-    first=1
-    while :; do
-        if [[ $first == 0 ]]; then printf '\033[%dA' "$((${#values[@]}+1))" >&2; fi
-        first=0
-        width=$(tput cols 2>/dev/null || printf 80); ((width>20)) || width=80
-        for ((i=0;i<${#values[@]};i++)); do
-            pointer=' '; mark='( )'; color='\033[0m'
-            if [[ $multiple == 1 ]]; then mark='[ ]'; [[ ${checked[i]} == 0 ]] || mark='[x]'; fi
-            if [[ $i == "$index" ]]; then pointer='>'; color='\033[32m'; [[ $multiple == 1 ]] || mark='(*)'; fi
-            line="  $pointer $mark ${labels[i]}"
-            printf '\033[2K%b%s\033[0m\n' "$color" "${line:0:$((width-2))}" >&2
-        done
-        if [[ $multiple == 1 ]]; then hint='Up/Down: move | Space: toggle | Enter: confirm | Esc: cancel'; else hint='Up/Down: move | Enter: confirm | Esc: cancel'; fi
-        printf '\033[2K\033[90m%s\033[0m\n' "${hint:0:$((width-2))}" >&2
-        IFS= read -rsn1 key || exit 1
-        case "$key" in
-            $'\033')
-                # macOS ships Bash 3.2, whose read timeout must be an integer.
-                suffix=''; IFS= read -rsn2 -t 1 suffix || true
-                case "$suffix" in '[A') index=$(((index+${#values[@]}-1)%${#values[@]}));; '[B') index=$(((index+1)%${#values[@]}));; *) printf '\nInstallation cancelled.\n' >&2; exit 1;; esac;;
-            ' ') if [[ $multiple == 1 ]]; then checked[index]=$((1-checked[index])); fi;;
-            '')
-                result=''
-                for ((i=0;i<${#values[@]};i++)); do
-                    if [[ $multiple == 1 && ${checked[i]} == 1 || $multiple == 0 && $i == "$index" ]]; then result="${result:+$result,}${values[i]}"; fi
-                done
-                result=${result:-none}
-                printf '\033[%dA' "$((${#values[@]}+1))" >&2
-                for ((i=0;i<=${#values[@]};i++)); do printf '\033[2K\n' >&2; done
-                printf '\033[%dA\033[32m  Selected: %s\033[0m\n' "$((${#values[@]}+1))" "$result" >&2
-                printf '%s' "$result"; exit 0;;
-        esac
+fb_no_links() (
+    fb_n=$1
+    while [ "$fb_n" != / ]; do
+        [ ! -L "$fb_n" ] || fb_fail "Refusing linked path: $fb_n"
+        [ "$fb_n" = "$1" ] || [ ! -e "$fb_n" ] || [ -d "$fb_n" ] ||
+            fb_fail "A path ancestor is not a directory: $fb_n"
+        fb_n=${fb_n%/*}
+        [ -n "$fb_n" ] || fb_n=/
     done
 )
 
-# ------------------------------------------------------------------ helpers
-if command -v shasum >/dev/null; then SHA_CMD=(shasum -a 256)
-elif command -v sha256sum >/dev/null; then SHA_CMD=(sha256sum)
-else die 'Install shasum or sha256sum and rerun.'; fi
-hash_file() { "${SHA_CMD[@]}" "$1" | awk '{print $1}'; }
-LOG_DIR=${FACET_LOG_DIR:-$FACET_HOME_DIR/logs}
-LOG=''
-TEMP=''; STAGE=''; NEW_RUNTIME=''; COMMITTED=0; ASIDE=''; ASIDE_TARGET=''
-cleanup() {
-    rc=$?
-    [[ -z "$STAGE" ]] || rm -rf -- "$STAGE"
-    if [[ $COMMITTED == 0 && -n "$NEW_RUNTIME" ]]; then rm -rf -- "$NEW_RUNTIME"; fi
-    if [[ -n "$ASIDE" ]]; then
-        # A replaced runtime is restored unless its verified replacement was activated.
-        if [[ $COMMITTED == 0 && ! -e "$ASIDE_TARGET" ]]; then mv -- "$ASIDE" "$ASIDE_TARGET"; else rm -rf -- "$ASIDE"; fi
-    fi
-    [[ -z "$TEMP" ]] || rm -rf -- "$TEMP"
-    if [[ $rc != 0 && -n "$LOG" ]]; then printf '\nSetup incomplete; the active runtime was not changed. Log: %s\n' "$LOG" >&2; fi
-}
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
-start_log() {
-    mkdir -p "$LOG_DIR"
-    LOG="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S)-$$.log"
-    TEMP=$(mktemp -d)
-}
-redact() { sed -E 's#(https?://)[^/@[:space:]]+@#\1<redacted>@#g; s#([?&][^=[:space:]&]+)=[^&[:space:]]+#\1=<redacted>#g'; }
-step() {
-    local label=$1 rc; shift
-    printf '  -> %s\n' "$label"
-    set +e
-    if [[ $DETAIL == 1 ]]; then (set -e; "$@") 2>&1 | redact | tee -a "$LOG"; rc=${PIPESTATUS[0]}; else (set -e; "$@") 2>&1 | redact >> "$LOG"; rc=${PIPESTATUS[0]}; fi
-    set -e
-    if [[ $rc != 0 ]]; then printf '  FAILED %s (see %s)\n' "$label" "$LOG" >&2; return "$rc"; fi
-    printf '  OK %s\n' "$label"
-}
-fetch() { curl --fail --silent --show-error --location --retry 3 --retry-delay 2 --connect-timeout 20 --proto '=https' --tlsv1.2 --max-time 900 --output "$2" "$1"; }
-verify_checksum() {
-    local expected
-    expected=$(awk -v name="$3" '{sub(/\r$/, "")} $2==name || $2=="*"name {print tolower($1);n++} END{if(n!=1)exit 1}' "$2") || die "Checksum entry missing or duplicated: $3"
-    [[ "$expected" =~ ^[a-f0-9]{64}$ && $(hash_file "$1") == "$expected" ]] || die "Checksum mismatch: $3"
-}
-safe_name() {
-    local name=$1 part
-    while [[ "$name" == ./* ]]; do name=${name#./}; done
-    [[ -n "$name" ]] || return 0
-    [[ "$name" != /* && "$name" != *\\* && "$name" != *:* && "$name" != *$'\r'* && "$name" != *$'\t'* ]] || die "Unsafe archive path: $name"
-    local parts
-    IFS='/' read -r -a parts <<< "$name"
-    for part in "${parts[@]}"; do [[ "$part" != .. && "$part" != . && -n "$part" && "$part" != *'.' && "$part" != *' ' ]] || die "Unsafe archive path: $name"; done
-}
-expand_zip() {
-    local archive=$1 dest=$2 name
-    zipinfo -1 "$archive" > "$TEMP/zip-names"
-    while IFS= read -r name; do safe_name "${name%/}"; done < "$TEMP/zip-names"
-    [[ $(sort -f "$TEMP/zip-names" | uniq -di | wc -l | tr -d ' ') == 0 ]] || die 'Duplicate archive entries.'
-    zipinfo -l "$archive" > "$TEMP/zip-modes"
-    awk 'length($1)==10 && $2 ~ /^[0-9]/ {if(substr($1,1,1)!="-" && substr($1,1,1)!="d")bad=1;total+=$4} END {if(bad || total>1073741824)exit 1}' "$TEMP/zip-modes" || die 'Archive links/special files or excessive size.'
-    unzip -q "$archive" -d "$dest"
-    [[ -z $(find "$dest" -type l -print) ]] || die 'Archive contains links.'
-}
-json_string() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
-utc_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-
-# ------------------------------------------------------------ runtime state
-runtime_dir() { printf '%s/%s' "$RUNTIMES" "$1"; }
-read_state() { [[ -f "$STATE_FILE" ]] || return 0; awk -F '"' -v key="$1" '$2==key {print $4; exit}' "$STATE_FILE"; }
-write_state() {
-    mkdir -p "$FACET_HOME_DIR"
-    printf '{\n  "schema": 1,\n  "current": %s,\n  "previous": %s,\n  "updated_at": %s\n}\n' \
-        "$(json_string "$1")" "$(json_string "$2")" "$(json_string "$(utc_now)")" > "$STATE_FILE.tmp"
-    mv -f "$STATE_FILE.tmp" "$STATE_FILE"
-}
-active_runtime() {
-    [[ -L "$CURRENT" ]] || return 0
-    basename -- "$(readlink "$CURRENT")"
-}
-runtime_record_ok() { [[ -f "$(runtime_dir "$1")/components.json" && -x "$(runtime_dir "$1")/bin/facet" ]]; }
-recorded_components() { [[ -f "$1/components.json" ]] || return 0; tr -d '\n' < "$1/components.json" | sed -n 's/.*"components": *\[\([^]]*\)\].*/\1/p' | tr -d ' "' ; }
-runtime_intact() {
-    local dir=$1
-    [[ -f "$dir/.facet-files.sha256" && -f "$dir/components.json" && ! -L "$dir/bin/facet" ]] || return 1
-    (cd "$dir" && "${SHA_CMD[@]}" -c .facet-files.sha256) >/dev/null 2>&1
-}
-activate() {
-    local target=$1 tmp
-    mkdir -p "$FACET_HOME_DIR"
-    [[ ! -e "$CURRENT" || -L "$CURRENT" ]] || die "$CURRENT exists and is not a link created by the Facet installer; it was left in place."
-    tmp="$FACET_HOME_DIR/.current-$$"
-    rm -f -- "$tmp"
-    ln -s "$(runtime_dir "$target")" "$tmp"
-    if mv -T "$tmp" "$CURRENT" 2>/dev/null; then :; else rm -f -- "$tmp"; ln -sfn "$(runtime_dir "$target")" "$CURRENT"; fi
-}
-v1_notice() {
-    local d
-    for d in "$LEGACY_HOME"/releases/1.*-*; do
-        if [[ -d "$d" ]]; then
-            printf '%s\n' 'Facet v1 project integrations are separate; remove them with the v1.1.0 installer --action uninstall in each project.'
-            return 0
-        fi
-    done
-}
-prune_runtimes() {
-    # One earlier runtime is kept for rollback; older ones are removed.
-    local keep=$1 previous=$2 dir name
-    for dir in "$RUNTIMES"/*; do
-        [[ -d "$dir" && ! -L "$dir" ]] || continue
-        name=$(basename -- "$dir")
-        [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?-(linux|darwin)-(amd64|arm64)$ ]] || continue
-        [[ "$name" != "$keep" && "$name" != "$previous" ]] || continue
-        if rm -rf -- "$dir"; then printf '  OK Removed older runtime %s\n' "$name"; else printf '  Older runtime %s could not be removed and was kept.\n' "$name"; fi
-    done
-}
-
-# --------------------------------------------------------------- PATH block
-profile_files() {
-    printf '%s\n' "$HOME/.profile"
-    [[ ! -f "$HOME/.bashrc" && "${SHELL:-}" != */bash ]] || printf '%s\n' "$HOME/.bashrc"
-    [[ ! -f "$HOME/.zshrc" && "${SHELL:-}" != */zsh ]] || printf '%s\n' "$HOME/.zshrc"
-}
-remove_profile_block() {
-    local file=$1
-    [[ -f "$file" ]] || return 0
-    grep -qxF "$PROFILE_START" "$file" || return 0
-    awk -v s="$PROFILE_START" -v e="$PROFILE_END" '$0==s {skip=1; next} $0==e && skip {skip=0; next} !skip {print}' "$file" > "$file.facet-tmp"
-    cat "$file.facet-tmp" > "$file"; rm -f -- "$file.facet-tmp"
-}
-add_path() {
-    local file changed=0 line
-    # The default home is written as $HOME so the profile line stays portable;
-    # a FACET_HOME is written as the absolute path it resolved to.
-    line='export PATH="$HOME/.facet/current/bin:$PATH"'
-    if [[ "$FACET_HOME_DIR" != "$HOME/.facet" ]]; then
-        line="export PATH=\"$(printf '%s' "$CURRENT/bin" | sed 's/[\\"$`]/\\&/g'):\$PATH\""
-    fi
-    while IFS= read -r file; do
-        [[ ! -L "$file" ]] || { printf '  Skipped linked profile %s\n' "$file"; continue; }
-        if [[ -f "$file" ]] && grep -qxF "$PROFILE_START" "$file"; then continue; fi
-        printf '\n%s\n%s\n%s\n' "$PROFILE_START" "$line" "$PROFILE_END" >> "$file"
-        printf '  OK Added %s to PATH in %s\n' "$CURRENT/bin" "$file"; changed=1
-    done < <(profile_files)
-    [[ $changed == 0 ]] || printf '%s\n' '  Open a new terminal to use the facet command.'
-}
-remove_path() {
-    local file
-    for file in "$HOME/.profile" "$HOME/.bashrc" "$HOME/.zshrc"; do
-        [[ -L "$file" ]] || remove_profile_block "$file"
-    done
-}
-
-# ----------------------------------------------------------------- wiring
-run_wire() {
-    local exe=$1; shift
-    printf '  -> facet wire %s\n' "$*"
-    "$exe" wire "$@"
-}
-wire_scope_args() {
-    if [[ "$1" == project ]]; then printf '%s\n' --scope project --project "$2"; else printf '%s\n' --scope user; fi
-}
-recorded_wire_groups() {
-    # Prints "scope<TAB>project" per recorded group from facet wire's registry.
-    [[ -f "$WIRING_FILE" ]] || return 0
-    if command -v python3 >/dev/null; then
-        python3 - "$WIRING_FILE" <<'PY'
-import json, sys
-seen = set()
-for w in json.load(open(sys.argv[1], encoding="utf-8")).get("wirings") or []:
-    key = (w.get("scope") or "user", w.get("project") or "")
-    if key not in seen:
-        seen.add(key); print("%s\t%s" % key)
-PY
-    elif command -v node >/dev/null; then
-        node -e 'const s=new Set();for(const w of (JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).wirings||[])){const k=(w.scope||"user")+"\t"+(w.project||"");if(!s.has(k)){s.add(k);console.log(k)}}' "$WIRING_FILE"
-    else
-        printf 'user\t\n'
-    fi
-}
-refresh_wirings() {
-    # facet wire registers current/bin/facet, so every wiring follows the
-    # active runtime; only the skills it copied can be older. Refreshing them
-    # keeps each CLI's Facet guidance at the active runtime's version. Files a
-    # person changed are never overwritten: facet wire reports them.
-    [[ -f "$WIRING_FILE" ]] || return 0
-    section 'Refresh wirings'
-    run_wire "$CURRENT/bin/facet" --refresh
-}
-
-# --------------------------------------------------------- system packages
-install_linux_node() {
-    local deps=$1 version arch stem base name nd entry
-    version=$(definition node 3); arch=x64; [[ "$ARCH" != arm64 ]] || arch=arm64
-    stem="node-v$version-linux-$arch"; name="$stem.tar.gz"; base="https://nodejs.org/dist/v$version"
-    printf '  -> Download official Node.js %s into %s/node\n' "$version" "$deps"
-    fetch "$base/$name" "$TEMP/$name"; fetch "$base/SHASUMS256.txt" "$TEMP/node-sums"
-    verify_checksum "$TEMP/$name" "$TEMP/node-sums" "$name"
-    [[ ! -e "$deps/node" ]] || rm -rf -- "$deps/node"
-    tar -tzf "$TEMP/$name" > "$TEMP/node-names"
-    while IFS= read -r entry; do safe_name "${entry%/}"; [[ "$entry" == "$stem/"* ]] || die 'Unexpected Node archive root.'; done < "$TEMP/node-names"
-    # Skip npm/npx/corepack links and replace npm/npx with explicit launchers.
-    tar -tvzf "$TEMP/$name" --exclude="$stem/bin/npm" --exclude="$stem/bin/npx" --exclude="$stem/bin/corepack" > "$TEMP/node-modes"
-    awk 'substr($1,1,1)!="-" && substr($1,1,1)!="d" {bad=1} END {exit bad}' "$TEMP/node-modes" || die 'Unexpected links/special files in Node runtime.'
-    nd="$TEMP/node-unpack"; mkdir -p "$nd"
-    tar -xzf "$TEMP/$name" -C "$nd" --exclude="$stem/bin/npm" --exclude="$stem/bin/npx" --exclude="$stem/bin/corepack"
-    for entry in npm npx; do
-        printf '#!/usr/bin/env bash\nexec "$(dirname "$0")/node" "$(dirname "$0")/../lib/node_modules/npm/bin/%s-cli.js" "$@"\n' "$entry" > "$nd/$stem/bin/$entry"
-        chmod +x "$nd/$stem/bin/$entry"
-    done
-    mv "$nd/$stem" "$deps/node"
-    hash -r
-}
-system_package() {
-    local id=$1 package packages
-    if [[ "$OS" == darwin ]]; then
-        package=$(definition "$id" 7); command -v brew >/dev/null || die "Install Homebrew or $id manually and rerun."
-        printf '  -> brew install %s\n' "$package"; brew install "$package"
-        if [[ "$id" == node || "$id" == python ]]; then export PATH="$(brew --prefix "$package")/bin:$PATH"; fi
-        return 0
-    fi
-    package=$(definition "$id" 6); read -r -a packages <<< "$package"
-    if ! command -v apt-get >/dev/null; then
-        printf '  This system has no apt-get. Install these with your package manager, then rerun: %s\n' "${packages[*]}" >&2
-        return 1
-    fi
-    if [[ "$id" == browser-libs ]] && ! apt-cache show libasound2t64 >/dev/null 2>&1; then package=${package//libasound2t64/libasound2}; read -r -a packages <<< "$package"; fi
-    if [[ "$id" == browser-libs ]] && ! apt-cache show fonts-liberation >/dev/null 2>&1; then package=${package//fonts-liberation/fonts-liberation2}; read -r -a packages <<< "$package"; fi
-    printf '  -> sudo apt-get install %s\n' "${packages[*]}"
-    if [[ $EUID == 0 ]]; then
-        apt-get update; DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
-    else
-        sudo apt-get update; sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
-    fi
-}
-node_compatible() { command -v node >/dev/null && [[ $(node -p "process.versions.node.split('.')[0]") -ge $(definition node 4) ]]; }
-# A headless browser needs shared libraries on Linux. Skip apt when the
-# downloaded browser already resolves all of them.
-browser_libraries_missing() {
-    local composer=$1 shell
-    shell=$(find "$composer/node_modules/.remotion" -type f -name 'chrome-headless-shell' 2>/dev/null | head -n 1)
-    [[ -n "$shell" ]] || return 0
-    command -v ldd >/dev/null || return 0
-    ldd "$shell" 2>/dev/null | grep -q 'not found'
-}
-
-# ------------------------------------------------------- facet from source
-# facet is compiled here from the release's source archive by the official Go
-# toolchain that the manifest pins. The build reads only the archive (its
-# modules are vendored), never the network, and sees no Go settings but its
-# own. Go, its caches and the source are removed afterwards. Go builds are
-# reproducible: every machine builds the same facet.
-GO_VERSION=$(definition go 3 2>/dev/null || true)
-GO_NAME="go$GO_VERSION.$OS-$ARCH.tar.gz"
-go_checksum() {
-    local pair
-    for pair in $(definition go "$([[ "$OS" == linux ]] && printf 6 || printf 7)"); do
-        if [[ "$pair" == "$ARCH:"* ]]; then printf '%s' "${pair#*:}"; return 0; fi
-    done
+fb_under() {
+    [ "$2" != / ] || return 0
+    case "$1/" in "$2/"*) return 0 ;; esac
     return 1
 }
-version_at_most() {
-    local IFS=. a b i
-    read -r -a a <<< "$1"; read -r -a b <<< "$2"
-    for i in 0 1 2; do
-        if ((10#${a[i]:-0} < 10#${b[i]:-0})); then return 0; fi
-        if ((10#${a[i]:-0} > 10#${b[i]:-0})); then return 1; fi
+
+fb_state_disjoint() (
+    fb_sd_logical=$(fb_path "$1")
+    fb_sd_parent=$fb_sd_logical
+    fb_sd_suffix=
+    while [ ! -d "$fb_sd_parent" ]; do
+        [ ! -L "$fb_sd_parent" ] || fb_fail "Cannot resolve protected state path: $fb_sd_parent"
+        fb_sd_suffix=/${fb_sd_parent##*/}$fb_sd_suffix
+        fb_sd_parent=${fb_sd_parent%/*}
+        [ -n "$fb_sd_parent" ] || fb_sd_parent=/
     done
+    fb_sd_physical=$(CDPATH= cd -P "$fb_sd_parent" && pwd -P) ||
+        fb_fail "Cannot resolve protected state directory: $fb_sd_parent"
+    fb_sd_physical=$(fb_path "$fb_sd_physical$fb_sd_suffix")
+    fb_sd_install=$fb_root
+    for fb_sd_state in "$fb_sd_logical" "$fb_sd_physical"; do
+        if [ "$fb_system" = darwin ]; then
+            # Darwin installations must also be safe on case-insensitive volumes.
+            fb_sd_install=$(printf '%s\n' "$fb_sd_install" | awk '{print tolower($0)}')
+            fb_sd_state=$(printf '%s\n' "$fb_sd_state" | awk '{print tolower($0)}')
+        fi
+        if fb_under "$fb_sd_install" "$fb_sd_state" || fb_under "$fb_sd_state" "$fb_sd_install"; then
+            fb_fail "Installation/data-state overlap with $2: $fb_sd_logical"
+        fi
+    done
+)
+
+fb_protect_state() (
+    case "$fb_system" in
+        darwin) fb_ps_app="$fb_home/Library/Application Support/Facet App" ;;
+        linux) fb_ps_app=${XDG_DATA_HOME:-$fb_home/.local/share}/facet-app ;;
+    esac
+    fb_state_disjoint "${FACET_APP_HOME:-$fb_ps_app}" "App data"
+    fb_state_disjoint "${FACET_HOME:-$fb_home/.facet}" "Facet's state"
+    if [ -n "${COMPA_HOME:-}" ]; then
+        fb_state_disjoint "$COMPA_HOME" COMPA_HOME
+    fi
+)
+
+fb_hash() (
+    if [ "$fb_hasher" = sha256sum ]; then
+        fb_h=$(sha256sum "$1") || fb_fail "Cannot hash $1"
+    else
+        fb_h=$(shasum -a 256 "$1") || fb_fail "Cannot hash $1"
+    fi
+    printf '%s\n' "${fb_h%% *}"
+)
+
+fb_limit() (
+    fb_l=$(wc -c < "$1") || fb_fail "Cannot measure $1"
+    [ "$fb_l" -le "$2" ] || fb_fail "Size limit exceeded: $1 ($2 bytes maximum)"
+)
+
+fb_copy() (
+    fb_no_links "$1"
+    [ -f "$1" ] || fb_fail "Expected a regular input file: $1"
+    head -c "$(($3 + 1))" < "$1" > "$2" || fb_fail "Cannot snapshot $1"
+    fb_limit "$2" "$3"
+)
+
+# Fetch release asset $1 into $fb_work/distribution/$1.
+fb_fetch() (
+    fb_fa_name=$1 fb_fa_limit=$2
+    if [ -n "$fb_distribution" ]; then
+        [ -e "$fb_distribution/$fb_fa_name" ] || [ -L "$fb_distribution/$fb_fa_name" ] ||
+            fb_fail "--distribution-dir needs $fb_fa_name"
+        fb_copy "$fb_distribution/$fb_fa_name" "$fb_work/distribution/$fb_fa_name" "$fb_fa_limit"
+    else
+        # -q must be first: no ~/.curlrc, netrc, token lookup, or auth fallback.
+        (
+            set +e
+            curl -q -fsSL --proto '=https' --proto-redir '=https' \
+                --connect-timeout 15 --max-time 600 --max-filesize "$fb_fa_limit" "$fb_url/$fb_fa_name"
+            printf '%s\n' "$?" > "$fb_work/download.status"
+        ) | head -c "$((fb_fa_limit + 1))" > "$fb_work/distribution/$fb_fa_name"
+        fb_limit "$fb_work/distribution/$fb_fa_name" "$fb_fa_limit"
+        [ -f "$fb_work/download.status" ] &&
+            [ "$(cat "$fb_work/download.status")" = 0 ] ||
+            fb_fail "Download failed: $fb_url/$fb_fa_name (no fallback was attempted)"
+    fi
+)
+
+fb_checksums() {
+    awk '
+        {
+            hash=substr($0,1,64); name=substr($0,67)
+            if (length(hash)!=64 || hash ~ /[^0-9a-fA-F]/ ||
+                substr($0,65,2)!="  " || name !~ /^[A-Za-z0-9][A-Za-z0-9._+-]*$/ ||
+                seen[tolower(name)]++) bad=1
+            names[name]=1
+        }
+        END {
+            if (!names["manifest.tsv"] || !names["build-manifest.json"] ||
+                !names["install.sh"] || !names["install.ps1"] || NR>4096) bad=1
+            exit bad
+        }
+    ' "$fb_work/distribution/SHA256SUMS" || fb_fail "Invalid or duplicate SHA256SUMS checksum inventory"
+}
+
+fb_checksum() (
+    fb_c=$(awk -v name="$1" 'substr($0,67)==name {print tolower(substr($0,1,64))}' \
+        "$fb_work/distribution/SHA256SUMS")
+    [ -n "$fb_c" ] || fb_fail "Missing checksum for $1"
+    [ "$(fb_hash "$fb_work/distribution/$1")" = "$fb_c" ] || fb_fail "Checksum mismatch: $1"
+)
+
+fb_manifest() {
+    awk -F '\t' '
+        function reject() {bad=1; exit 1}
+        function path(s, a,n,i) {
+            if (s !~ /^[A-Za-z0-9][A-Za-z0-9._+\/-]*$/) return 0
+            n=split(s,a,"/")
+            for(i=1;i<=n;i++) if(a[i]=="" || a[i]=="." || a[i]=="..") return 0
+            return 1
+        }
+        function product(p) {return (p=="core" || p=="app")}
+        function target(t) {return (t ~ /^(linux|darwin|windows)\/(amd64|arm64)$/)}
+        function layout(p,s) {
+            if(p=="core") return (s=="bin/facet" || s=="bin/facet.exe" || s=="LICENSE" || s=="THIRD_PARTY_NOTICES.md")
+            return (s=="bin/facet-app" || s=="bin/facet-app.exe" || s ~ /^kernel\/(compa-kernel|compa-kernel\.exe|LICENSE|NOTICE)$/ ||
+                s=="app/LICENSE" || s=="app/THIRD_PARTY_NOTICES.md")
+        }
+        NR==1 {if($0!="format\tfacet-release-v1") reject()}
+        $1=="format" {if(NF!=2 || $2!="facet-release-v1" || format++) reject(); next}
+        $1=="version" {
+            if(NF!=2 || version!="" || $2 !~ /^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$/) reject()
+            version=$2; next
+        }
+        $1=="commit" {
+            if(NF!=2 || commit++ || (length($2)!=40 && length($2)!=64) || $2 ~ /[^0-9a-fA-F]/) reject()
+            next
+        }
+        $1=="archive" {
+            key=$2 SUBSEP $3
+            if(NF!=4 || !product($2) || !target($3) || archives[key]!="" ||
+                $4 !~ /^[A-Za-z0-9][A-Za-z0-9._+-]*$/ || archiveNames[tolower($4)]++) reject()
+            archives[key]=$4; products[key]=$2; targets[key]=$3; next
+        }
+        $1=="file" {
+            key=$2 SUBSEP $3; full=key SUBSEP $4
+            if(NF!=5 || !product($2) || !target($3) || !path($4) || !layout($2,$4) ||
+                length($5)!=64 || $5 ~ /[^0-9a-fA-F]/ || seen[key SUBSEP tolower($4)]++) reject()
+            files[full]=1; fileKeys[full]=key; fileNames[full]=$4
+            if(++counts[key]>4096) reject()
+            next
+        }
+        {reject()}
+        END {
+            if(bad) exit 1
+            if(format!=1 || commit!=1 || version=="") exit 1
+            for(key in archives) {
+                t=targets[key]; p=products[key]; gsub(/\//,"_",t)
+                suffix=".tar.gz"; extension=""
+                if(targets[key] ~ /^windows\//) {suffix=".zip"; extension=".exe"}
+                if(archives[key]!="facet-" p "_" version "_" t suffix || !counts[key]) exit 1
+                if(p=="core" && (counts[key]!=3 || !files[key SUBSEP "bin/facet" extension] ||
+                    !files[key SUBSEP "LICENSE"] || !files[key SUBSEP "THIRD_PARTY_NOTICES.md"])) exit 1
+                if(p=="app" && (counts[key]!=6 || !files[key SUBSEP "bin/facet-app" extension] ||
+                    !files[key SUBSEP "kernel/compa-kernel" extension] || !files[key SUBSEP "kernel/LICENSE"] ||
+                    !files[key SUBSEP "kernel/NOTICE"] || !files[key SUBSEP "app/LICENSE"] ||
+                    !files[key SUBSEP "app/THIRD_PARTY_NOTICES.md"])) exit 1
+            }
+            for(full in files) if(!(fileKeys[full] in archives)) exit 1
+        }
+    ' "$fb_work/distribution/manifest.tsv" || fb_fail "Invalid release manifest.tsv or archive/file allowlist"
+}
+
+fb_select() (
+    fb_s=$(awk -F '\t' -v p="$1" -v t="$2" '$1=="archive" && $2==p && $3==t {print $4}' \
+        "$fb_work/distribution/manifest.tsv")
+    [ -n "$fb_s" ] || fb_fail "No exact native $1 archive declared for $2"
+    awk -F '\t' -v p="$1" -v t="$2" \
+        '$1=="file" && $2==p && $3==t {print $4 "\t" tolower($5)}' \
+        "$fb_work/distribution/manifest.tsv" | sort > "$fb_work/$1.files"
+    printf '%s\n' "$fb_s"
+)
+
+fb_extract_tar() (
+    fb_xt_product=$1
+    fb_xt_archive=$fb_work/distribution/$2
+    fb_xt_tar=$fb_work/$1.tar
+    fb_xt_dest=$3
+    (
+        set +e
+        gzip -dc "$fb_xt_archive"
+        printf '%s\n' "$?" > "$fb_work/gzip.status"
+    ) | head -c "$((fb_archive_limit + 1))" > "$fb_xt_tar"
+    fb_limit "$fb_xt_tar" "$fb_archive_limit"
+    [ -f "$fb_work/gzip.status" ] && [ "$(cat "$fb_work/gzip.status")" = 0 ] ||
+        fb_fail "Invalid compressed archive: $2"
+    # Preserve raw names while listing; ignore zero padding so concatenated
+    # archives cannot hide extra members. Extraction only ever writes stdout.
+    tar -tP --ignore-zeros -f "$fb_xt_tar" > "$fb_work/tar.names" || fb_fail "Invalid archive inventory: $2"
+    tar -tvP --ignore-zeros -f "$fb_xt_tar" > "$fb_work/tar.types" || fb_fail "Invalid archive types: $2"
+    awk 'substr($0,1,1)!="-" {bad=1} END {exit (bad || NR==0 || NR>4096)}' \
+        "$fb_work/tar.types" || fb_fail "Archive must contain only ordinary files, not links/devices/directories"
+    [ "$(wc -l < "$fb_work/tar.types")" -eq "$(wc -l < "$fb_work/tar.names")" ] ||
+        fb_fail "Ambiguous archive member names"
+    sort "$fb_work/tar.names" > "$fb_work/tar.sorted"
+    cut -f 1 "$fb_work/$fb_xt_product.files" | sort > "$fb_work/tar.expected"
+    cmp -s "$fb_work/tar.sorted" "$fb_work/tar.expected" ||
+        fb_fail "Archive members differ from the exact canonical file allowlist (unsafe, extra or duplicate member)"
+    mkdir "$fb_xt_dest" || fb_fail "Cannot create private extraction directory"
+    fb_xt_total=0
+    while IFS="$fb_tab" read -r fb_xt_name fb_xt_hash; do
+        fb_xt_file=$fb_xt_dest/$fb_xt_name
+        mkdir -p "${fb_xt_file%/*}" || fb_fail "Cannot create private member directory"
+        (
+            set +e
+            tar -xOP --ignore-zeros -f "$fb_xt_tar" "$fb_xt_name"
+            printf '%s\n' "$?" > "$fb_work/tar.status"
+        ) | head -c "$((fb_archive_limit - fb_xt_total + 1))" > "$fb_xt_file"
+        fb_xt_size=$(wc -c < "$fb_xt_file")
+        fb_xt_total=$((fb_xt_total + fb_xt_size))
+        [ "$fb_xt_total" -le "$fb_archive_limit" ] || fb_fail "Expanded archive size limit exceeded"
+        [ -f "$fb_work/tar.status" ] && [ "$(cat "$fb_work/tar.status")" = 0 ] ||
+            fb_fail "Archive member extraction failed: $fb_xt_name"
+        [ "$(fb_hash "$fb_xt_file")" = "$fb_xt_hash" ] ||
+            fb_fail "File checksum mismatch: $fb_xt_name"
+        chmod 644 "$fb_xt_file" || fb_fail "Cannot set private member permissions"
+    done < "$fb_work/$fb_xt_product.files"
+)
+
+fb_check_file() (
+    fb_no_links "$1"
+    [ -f "$1" ] || fb_fail "Preserving a modified or missing owned file: $1"
+    [ "$(fb_hash "$1")" = "$2" ] || fb_fail "Preserving a modified or missing owned file: $1"
+)
+
+fb_same_file() {
+    [ ! -L "$1" ] && [ -f "$1" ] && [ "$(fb_hash "$1")" = "$2" ]
+}
+
+fb_check_link() (
+    fb_no_links "${1%/*}"
+    [ -L "$1" ] && [ "$(readlink "$1")" = "$2" ] || fb_fail "Modified or missing owned launch link: $1"
+)
+
+# Read the receipt into $fb_work/owned.{meta,products,places,files,links}.
+fb_read_receipt() {
+    for fb_rr_part in meta products places files links; do : > "$fb_work/owned.$fb_rr_part"; done
+    fb_owned=none fb_old_receipt=
+    if [ ! -e "$fb_receipt" ] && [ ! -L "$fb_receipt" ]; then return; fi
+    fb_copy "$fb_receipt" "$fb_work/receipt.old" "$fb_metadata_limit"
+    awk -F '\t' -v root="$fb_root" '
+        function bad() {failed=1; exit 1}
+        function path(s, a,n,i) {
+            if (s !~ /^[A-Za-z0-9][A-Za-z0-9._+\/-]*$/) return 0
+            n=split(s,a,"/")
+            for(i=1;i<=n;i++) if(a[i]=="" || a[i]=="." || a[i]=="..") return 0
+            return 1
+        }
+        $1 ~ /^(format|version|commit|repository|target|root)$/ {
+            if(NF!=2 || ($1 in meta)) bad()
+            meta[$1]=$2; next
+        }
+        $1=="product" {if(NF!=2 || $2 !~ /^(core|app)$/ || products[$2]++) bad(); next}
+        $1=="place" {
+            if(NF!=7 || $2 !~ /^[1-9][0-9]*$/ || length($2)>6 || ($2 in kinds) || $7 !~ /^\// || dirs[$7]++ ||
+                $6 !~ /^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$/ || $3!="start" || $4!="-" || $5!="-") bad()
+            kinds[$2]=$3; next
+        }
+        $1=="file" {
+            if(NF!=4 || ($2!="root" && !($2 in kinds)) || !path($3) ||
+                length($4)!=64 || $4 ~ /[^0-9a-f]/ || seen[$2 SUBSEP tolower($3)]++) bad()
+            count[$2]++; bases[++entries]=$2; names[entries]=tolower($3); next
+        }
+        $1=="link" {
+            name=$2; sub(/^.*\//,"",name)
+            if(NF!=3 || $2 !~ /^\// || (name!="facet" && name!="facet-app") || links[$2]++ || $3!=root "/bin/" name) bad()
+            next
+        }
+        {bad()}
+        END {
+            if(failed) exit 1
+            if(meta["format"]!="facet-install-v1" ||
+                meta["version"] !~ /^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$/ ||
+                meta["commit"] !~ /^[0-9a-f]+$/ || (length(meta["commit"])!=40 && length(meta["commit"])!=64) ||
+                meta["target"] !~ /^(linux|darwin)\/(amd64|arm64)$/ || meta["root"]!=root ||
+                !products["core"] || !count["root"]) exit 1
+            for(id in kinds) if(!count[id]) exit 1
+            for(i=1;i<=entries;i++) {
+                parent=names[i]
+                while(sub(/\/[^\/]+$/,"",parent)) if((bases[i] SUBSEP parent) in seen) exit 1
+            }
+        }
+    ' "$fb_work/receipt.old" || fb_fail "Invalid or relocated installation receipt; refusing its ownership"
+    fb_old_receipt=$(fb_hash "$fb_work/receipt.old")
+    fb_owned=current
+    awk -F '\t' '$1 ~ /^(version|commit|repository|target)$/ {print}' "$fb_work/receipt.old" > "$fb_work/owned.meta"
+    awk -F '\t' '$1=="product"{print $2}' "$fb_work/receipt.old" > "$fb_work/owned.products"
+    awk -F '\t' '$1=="place"{print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7}' "$fb_work/receipt.old" > "$fb_work/owned.places"
+    awk -F '\t' '$1=="file"{print $2 "\t" $3 "\t" $4}' "$fb_work/receipt.old" > "$fb_work/owned.files"
+    awk -F '\t' '$1=="link"{print $2 "\t" $3}' "$fb_work/receipt.old" > "$fb_work/owned.links"
+    while IFS="$fb_tab" read -r fb_rr_id fb_rr_kind fb_rr_harness fb_rr_scope fb_rr_version fb_rr_dir; do
+        [ "$(fb_path "$fb_rr_dir")" = "$fb_rr_dir" ] || fb_fail "Invalid receipt place folder: $fb_rr_dir"
+    done < "$fb_work/owned.places"
+}
+
+fb_owned_meta() {
+    awk -F '\t' -v key="$1" '$1==key {print $2}' "$fb_work/owned.meta"
+}
+
+fb_has_line() {
+    awk -v value="$2" '$0==value {found=1} END {exit (!found)}' "$1"
+}
+
+fb_start_dir() (
+    case "$fb_system" in
+        darwin) fb_path "$fb_home/Applications" ;;
+        *) fb_path "${XDG_DATA_HOME:-$fb_home/.local/share}/applications" ;;
+    esac
+)
+
+# Write the Start entry for this platform into $1 and list its files, TAB mode, in $2.
+fb_write_start() (
+    mkdir -p "$1" || fb_fail "Cannot stage the Start entry"
+    case "$fb_system" in
+        darwin)
+            mkdir -p "$1/Facet.app/Contents/MacOS" || fb_fail "Cannot stage the Start entry"
+            fb_ws_quoted=$(printf '%s\n' "$fb_root/bin/facet-app" | awk -v q="'" '{
+                out = ""
+                for (i = 1; i <= length($0); i++) {
+                    c = substr($0, i, 1)
+                    if (c == q) out = out q "\\" q q
+                    else out = out c
+                }
+                print out
+            }')
+            {
+                printf '#!/bin/sh\n'
+                printf "exec '%s' \"\$@\"\n" "$fb_ws_quoted"
+            } > "$1/Facet.app/Contents/MacOS/Facet"
+            {
+                printf '<?xml version="1.0" encoding="UTF-8"?>\n'
+                printf '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+                printf '<plist version="1.0">\n<dict>\n'
+                printf '  <key>CFBundleExecutable</key><string>Facet</string>\n'
+                printf '  <key>CFBundleIdentifier</key><string>com.kayiik.facet</string>\n'
+                printf '  <key>CFBundleName</key><string>Facet</string>\n'
+                printf '  <key>CFBundlePackageType</key><string>APPL</string>\n'
+                printf '  <key>CFBundleShortVersionString</key><string>%s</string>\n' "$fb_version"
+                printf '</dict>\n</plist>\n'
+            } > "$1/Facet.app/Contents/Info.plist"
+            printf 'Facet.app/Contents/Info.plist\t644\nFacet.app/Contents/MacOS/Facet\t755\n' > "$2"
+            ;;
+        *)
+            fb_ws_exec=$(printf '%s\n' "$fb_root/bin/facet-app" | awk '{
+                out = ""
+                for (i = 1; i <= length($0); i++) {
+                    c = substr($0, i, 1)
+                    if (c == "\"" || c == "`" || c == "$") out = out "\\" c
+                    else if (c == "%") out = out "%%"
+                    else out = out c
+                }
+                print out
+            }')
+            {
+                printf '[Desktop Entry]\nType=Application\nName=Facet\n'
+                printf 'Comment=Make videos with an AI producer\n'
+                printf 'Exec="%s"\nTerminal=true\nCategories=AudioVideo;Video;\n' "$fb_ws_exec"
+            } > "$1/facet.desktop"
+            printf 'facet.desktop\t644\n' > "$2"
+            ;;
+    esac
+)
+
+fb_mkdir() (
+    fb_md=$1
+    fb_no_links "$fb_md"
+    : > "$fb_work/directories.pending"
+    while [ ! -d "$fb_md" ]; do
+        [ ! -e "$fb_md" ] || fb_fail "Directory path is occupied: $fb_md"
+        printf '%s\n' "$fb_md" >> "$fb_work/directories.pending"
+        fb_md=${fb_md%/*}
+        [ -n "$fb_md" ] || fb_md=/
+    done
+    sort "$fb_work/directories.pending" > "$fb_work/directories.sorted"
+    while IFS= read -r fb_md; do
+        mkdir "$fb_md" || fb_fail "Cannot create installation directory: $fb_md"
+        printf '%s\n' "$fb_md" >> "$fb_work/directories.created"
+    done < "$fb_work/directories.sorted"
+)
+
+fb_apply_file() {
+    fb_af_dest=$1 fb_af_source=$2 fb_af_old=$3 fb_af_new=$4 fb_af_mode=$5
+    fb_no_links "$fb_af_dest"
+    if [ "$fb_af_old" = - ]; then
+        [ ! -e "$fb_af_dest" ] && [ ! -L "$fb_af_dest" ] ||
+            fb_fail "Refusing to overwrite a file Facet does not own: $fb_af_dest"
+    else
+        fb_check_file "$fb_af_dest" "$fb_af_old"
+    fi
+    fb_sequence=$((fb_sequence + 1))
+    fb_af_backup=$fb_work/backups/$fb_sequence
+    if [ "$fb_af_old" != - ]; then
+        cp -p "$fb_af_dest" "$fb_af_backup" || fb_fail "Cannot back up $fb_af_dest"
+        fb_check_file "$fb_af_backup" "$fb_af_old"
+    fi
+    printf 'file\t%s\t%s\t%s\t%s\n' "$fb_af_dest" "$fb_af_old" "$fb_af_new" "$fb_af_backup" \
+        > "$fb_work/journal/$fb_sequence"
+    printf '%s\n' "$fb_sequence" >> "$fb_work/order"
+    if [ "$fb_af_new" = - ]; then
+        rm "$fb_af_dest" || fb_fail "Cannot remove owned file: $fb_af_dest"
+    else
+        fb_mkdir "${fb_af_dest%/*}"
+        fb_af_temp=$(mktemp "${fb_af_dest%/*}/.facet-install.XXXXXXXX") || fb_fail "Cannot stage atomic publication"
+        printf '%s\n' "$fb_af_temp" >> "$fb_work/temporaries"
+        cp "$fb_af_source" "$fb_af_temp" && chmod "$fb_af_mode" "$fb_af_temp" ||
+            fb_fail "Cannot prepare publication: $fb_af_dest"
+        fb_check_file "$fb_af_temp" "$fb_af_new"
+        if [ "$fb_af_old" = - ]; then
+            ln "$fb_af_temp" "$fb_af_dest" || fb_fail "Atomic no-clobber publication failed: $fb_af_dest"
+            rm "$fb_af_temp" || fb_fail "Cannot remove publication temporary"
+        else
+            fb_check_file "$fb_af_dest" "$fb_af_old"
+            mv -f "$fb_af_temp" "$fb_af_dest" || fb_fail "Atomic publication failure: $fb_af_dest"
+        fi
+        fb_check_file "$fb_af_dest" "$fb_af_new"
+    fi
+}
+
+fb_apply_link() {
+    fb_al_path=$1 fb_al_old=$2 fb_al_new=$3
+    fb_no_links "${fb_al_path%/*}"
+    if [ "$fb_al_old" = - ]; then
+        [ ! -e "$fb_al_path" ] && [ ! -L "$fb_al_path" ] || fb_fail "PATH entry appeared: $fb_al_path"
+    else
+        fb_check_link "$fb_al_path" "$fb_al_old"
+    fi
+    fb_sequence=$((fb_sequence + 1))
+    printf 'link\t%s\t%s\t%s\t-\n' "$fb_al_path" "$fb_al_old" "$fb_al_new" > "$fb_work/journal/$fb_sequence"
+    printf '%s\n' "$fb_sequence" >> "$fb_work/order"
+    if [ "$fb_al_new" = - ]; then
+        rm "$fb_al_path" || fb_fail "Cannot remove owned launch link: $fb_al_path"
+    else
+        fb_mkdir "${fb_al_path%/*}"
+        ln -s "$fb_al_new" "$fb_al_path" || fb_fail "Cannot create owned launch link: $fb_al_path"
+        fb_check_link "$fb_al_path" "$fb_al_new"
+    fi
+}
+
+fb_rollback() (
+    fb_rb_failed=0
+    for fb_rb_id in $(sort -rn "$fb_work/order"); do
+        IFS="$fb_tab" read -r fb_rb_type fb_rb_path fb_rb_before fb_rb_after fb_rb_backup < "$fb_work/journal/$fb_rb_id"
+        if ! fb_no_links "${fb_rb_path%/*}"; then fb_rb_failed=1; continue; fi
+        fb_rb_current=-
+        if [ "$fb_rb_type" = link ]; then
+            if [ -L "$fb_rb_path" ]; then
+                fb_rb_current=$(readlink "$fb_rb_path") || { fb_rb_failed=1; continue; }
+            elif [ -e "$fb_rb_path" ]; then
+                fb_rb_current=unexpected
+            fi
+        elif [ -L "$fb_rb_path" ]; then
+            fb_rb_current=unexpected
+        elif [ -f "$fb_rb_path" ]; then
+            fb_rb_current=$(fb_hash "$fb_rb_path") || { fb_rb_failed=1; continue; }
+        elif [ -e "$fb_rb_path" ]; then
+            fb_rb_current=unexpected
+        fi
+        [ "$fb_rb_current" != "$fb_rb_before" ] || continue
+        if [ "$fb_rb_current" != "$fb_rb_after" ]; then
+            printf 'facet install: refusing rollback over a changed path: %s\n' "$fb_rb_path" >&2
+            fb_rb_failed=1
+            continue
+        fi
+        if [ "$fb_rb_before" = - ]; then
+            rm "$fb_rb_path" || fb_rb_failed=1
+        elif [ "$fb_rb_type" = link ]; then
+            ln -s "$fb_rb_before" "$fb_rb_path" || fb_rb_failed=1
+        else
+            if ! fb_check_file "$fb_rb_backup" "$fb_rb_before"; then fb_rb_failed=1; continue; fi
+            mkdir -p "${fb_rb_path%/*}" || { fb_rb_failed=1; continue; }
+            fb_rb_temp=$(mktemp "${fb_rb_path%/*}/.facet-install.XXXXXXXX") ||
+                { fb_rb_failed=1; continue; }
+            printf '%s\n' "$fb_rb_temp" >> "$fb_work/temporaries"
+            cp -p "$fb_rb_backup" "$fb_rb_temp" && mv -f "$fb_rb_temp" "$fb_rb_path" ||
+                fb_rb_failed=1
+        fi
+    done
+    return "$fb_rb_failed"
+)
+
+fb_cleanup() {
+    fb_cl_status=$1
+    set +e
+    if [ -n "$fb_work" ]; then
+        if [ "$fb_committed" = no ] && [ -s "$fb_work/order" ]; then
+            if ! fb_rollback; then
+                printf 'facet install: recovery required; backups/journal retained at %s; lock retained at %s\n' \
+                    "$fb_work" "$fb_lock" >&2
+                return 1
+            fi
+        fi
+        while IFS= read -r fb_cl_temp; do
+            if [ -e "$fb_cl_temp" ] || [ -L "$fb_cl_temp" ]; then
+                rm "$fb_cl_temp" || fb_cl_status=1
+            fi
+        done < "$fb_work/temporaries"
+        if [ "$fb_locked" = yes ]; then
+            rmdir "$fb_lock" || fb_cl_status=1
+            fb_locked=no
+        fi
+        if [ "$fb_committed" = no ]; then
+            sort -r "$fb_work/directories.created" > "$fb_work/directories.cleanup"
+            while IFS= read -r fb_cl_dir; do
+                if [ -d "$fb_cl_dir" ] && [ -z "$(ls -A "$fb_cl_dir")" ]; then
+                    rmdir "$fb_cl_dir" || fb_cl_status=1
+                fi
+            done < "$fb_work/directories.cleanup"
+        fi
+        # Only this private mktemp tree, never an installation/home/state tree.
+        find "$fb_work" -depth ! -type d -exec rm -f {} + &&
+            find "$fb_work" -depth -type d -exec rmdir {} + || fb_cl_status=1
+        fb_work=
+    fi
+    return "$fb_cl_status"
+}
+
+# Remove folders a removal left empty, up to but not including $2.
+fb_prune() (
+    fb_pr_dir=${1%/*}
+    while [ "$fb_pr_dir" != "$2" ] && fb_under "$fb_pr_dir" "$2"; do
+        [ -d "$fb_pr_dir" ] && [ ! -L "$fb_pr_dir" ] && [ -z "$(ls -A "$fb_pr_dir")" ] || break
+        rmdir "$fb_pr_dir" || break
+        fb_pr_dir=${fb_pr_dir%/*}
+    done
+)
+
+# Plan lines: file TAB path TAB old TAB new TAB source TAB mode TAB base, or
+# link TAB path TAB old TAB new; "-" means absent.
+fb_plan_file() {
+    printf 'file\t%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" "$6" >> "$fb_work/plan"
+}
+
+fb_note() {
+    printf '%s\n' "$*" >> "$fb_work/notes"
+}
+
+fb_mode_of() {
+    case "$1" in bin/facet|bin/facet-app|kernel/compa-kernel|Facet.app/Contents/MacOS/Facet) printf '755\n' ;; *) printf '644\n' ;; esac
+}
+
+# Plan removals for one owned place; edited files are kept and noted.
+fb_plan_place_removal() {
+    fb_pr_id=$1 fb_pr_dir=$2
+    awk -F '\t' -v id="$fb_pr_id" '$1==id {print $2 "\t" $3}' "$fb_work/owned.files" > "$fb_work/place.files"
+    while IFS="$fb_tab" read -r fb_pr_rel fb_pr_hash; do
+        if fb_same_file "$fb_pr_dir/$fb_pr_rel" "$fb_pr_hash"; then
+            fb_plan_file "$fb_pr_dir/$fb_pr_rel" "$fb_pr_hash" - - 644 "$fb_pr_dir"
+        elif [ -e "$fb_pr_dir/$fb_pr_rel" ] || [ -L "$fb_pr_dir/$fb_pr_rel" ]; then
+            fb_note "Kept $fb_pr_dir/$fb_pr_rel: it was changed since installation"
+        fi
+    done < "$fb_work/place.files"
+}
+
+fb_place_unchanged() {
+    awk -F '\t' -v id="$1" '$1==id {print $2 "\t" $3}' "$fb_work/owned.files" > "$fb_work/place.check"
+    while IFS="$fb_tab" read -r fb_pu_rel fb_pu_hash; do
+        fb_same_file "$2/$fb_pu_rel" "$fb_pu_hash" || return 1
+    done < "$fb_work/place.check"
     return 0
 }
-fetch_toolchain() {
-    fetch "$(definition go 4)$GO_NAME" "$1"
-    [[ $(hash_file "$1") == "$(go_checksum)" ]] || die "Checksum mismatch: $GO_NAME"
-}
-unpack_toolchain() {
-    mkdir -p "$2"
-    # Go's own tests are not needed to build.
-    tar -xzf "$1" -C "$2" --exclude=testdata --exclude=go/test
-    [[ -x "$2/go/bin/go" ]] || die "$GO_NAME holds no go/bin/go."
-}
-unpack_source() {
-    local archive=$1 tree=$2 needed required
-    mkdir -p "$tree"
-    expand_zip "$archive" "$tree"
-    for required in LICENSE "notices/$OS-$ARCH.md" source/go.mod source/cmd/facet/main.go source/vendor/modules.txt; do
-        [[ -f "$tree/$required" ]] || die "Release missing $required"
-    done
-    needed=$(awk '$1=="go" && $2 ~ /^[0-9]+\.[0-9]+(\.[0-9]+)?$/ {print $2; exit}' "$tree/source/go.mod")
-    if [[ -n "$needed" ]] && ! version_at_most "$needed" "$GO_VERSION"; then
-        die "Facet $VERSION needs Go $needed to build, and this installer brings Go $GO_VERSION; use the installer from the Facet $VERSION release."
-    fi
-}
-build_facet() {
-    local tree=$1 stage=$2 build=$3 var unset=()
-    for var in $(compgen -e); do case "$var" in GO*|CGO_*) unset+=(-u "$var");; esac; done
-    mkdir -p "$build/cache" "$build/path" "$build/tmp" "$build/home" "$stage/bin"
-    # Go keeps telemetry counters in the user's configuration folder; with HOME
-    # and XDG_CONFIG_HOME pointed here, they are removed with the build.
-    (cd "$tree/source" && env ${unset[@]+"${unset[@]}"} GOTOOLCHAIN=local GOFLAGS=-mod=vendor GOPROXY=off GOWORK=off GOENV=off \
-        GO111MODULE=on CGO_ENABLED=0 GOOS="$OS" GOARCH="$ARCH" GOCACHE="$build/cache" GOPATH="$build/path" GOTMPDIR="$build/tmp" \
-        HOME="$build/home" XDG_CONFIG_HOME="$build/home/.config" XDG_CACHE_HOME="$build/home/.cache" \
-        "$build/go/bin/go" build -trimpath -buildvcs=false -ldflags "-s -w -X main.Version=$VERSION" -o "$stage/bin/facet" ./cmd/facet)
-    cp "$tree/LICENSE" "$stage/LICENSE"
-    cp "$tree/notices/$OS-$ARCH.md" "$stage/THIRD_PARTY_NOTICES.md"
-    cp -R "$tree/dependencies" "$stage/dependencies"
-}
-remove_build() {
-    chmod -R u+w "$1" 2>/dev/null || true
-    rm -rf -- "$1"
-    [[ -z "${2:-}" ]] || rm -f -- "$2"
-}
-source_build() {
-    local stage=$1 build="$TEMP/build" tarball available
-    go_checksum >/dev/null || die "The installer manifest pins no Go toolchain for $OS/$ARCH."
-    command -v tar >/dev/null || die 'Install required utility: tar'
-    available=$(df -Pk "$TEMP" | awk 'NR==2 {print $4}')
-    if [[ "$available" =~ ^[0-9]+$ ]] && ((available < 512000)); then
-        die "Building Facet needs about 500 MB of free disk space for Go and its build cache; $((available / 1024)) MB are free in $TEMP."
-    fi
-    # The source is checked before Go is fetched: a bad archive costs no download.
-    step "Unpack Facet $VERSION source" unpack_source "$ARCHIVE" "$build/facet"
-    if [[ -n "$TOOLCHAIN" ]]; then
-        [[ -f "$TOOLCHAIN" ]] || die "Go toolchain not found: $TOOLCHAIN"
-        [[ $(hash_file "$TOOLCHAIN") == "$(go_checksum)" ]] || die "$TOOLCHAIN is not the official $GO_NAME (SHA-256 mismatch)."
-        printf '  OK Check Go %s\n' "$GO_VERSION"
-        tarball=$TOOLCHAIN
-    else
-        tarball="$TEMP/$GO_NAME"
-        step "Download Go $GO_VERSION" fetch_toolchain "$tarball"
-    fi
-    step "Unpack Go $GO_VERSION" unpack_toolchain "$tarball" "$build"
-    step "Build Facet $VERSION (a minute or two)" build_facet "$build/facet" "$stage" "$build"
-    if [[ -n "$TOOLCHAIN" ]]; then step 'Remove Go and the build cache' remove_build "$build"
-    else step 'Remove Go and the build cache' remove_build "$build" "$tarball"; fi
-}
-# The release's checksum file says what it ships: a prebuilt archive for this
-# platform and, from 2.2.0, Facet's source, which --from-source builds. With
-# --archive, the archive's hash picks the entry.
-select_archive() {
-    local sums=$1 hash=$2 candidate expected listed='' candidates
-    candidates=("facet-$VERSION-$OS-$ARCH.zip" "facet-$VERSION-source.zip")
-    [[ $FROM_SOURCE != 1 ]] || candidates=("facet-$VERSION-source.zip")
-    for candidate in "${candidates[@]}"; do
-        expected=$(awk -v name="$candidate" '{sub(/\r$/, "")} $2==name || $2=="*"name {print tolower($1); n++} END {exit n>1}' "$sums") \
-            || die "Checksum entry missing or duplicated: $candidate"
-        [[ -n "$expected" ]] || continue
-        [[ -n "$listed" ]] || listed=$candidate
-        if [[ -z "$hash" || "$expected" == "$hash" ]]; then printf '%s' "$candidate"; return 0; fi
-    done
-    if [[ -z "$hash" ]]; then
-        [[ $FROM_SOURCE != 1 ]] || die "Facet $VERSION has no source archive; --from-source needs Facet 2.2.0 or later."
-        die "Facet $VERSION has no download for $OS/$ARCH."
-    fi
-    [[ -z "$listed" ]] || die "Checksum mismatch: $listed"
-    die "Checksum entry missing or duplicated: ${candidates[0]}"
-}
 
-# ---------------------------------------------------------------- actions
-do_uninstall() {
-    section 'Uninstall'
-    local exe='' name group scope project problems=0 runtime
-    if [[ -x "$CURRENT/bin/facet" ]]; then exe="$CURRENT/bin/facet"; else
-        for runtime in "$RUNTIMES"/*; do [[ -x "$runtime/bin/facet" ]] && exe="$runtime/bin/facet"; done
-    fi
-    while IFS=$'\t' read -r scope project; do
-        [[ -n "$scope" ]] || continue
-        if [[ -z "$exe" ]]; then printf '%s\n' '  Recorded CLI wirings remain, but no facet executable is available; reinstall Facet and run facet wire --remove all.' >&2; problems=1; break; fi
-        local args=()
-        while IFS= read -r a; do args+=("$a"); done < <(wire_scope_args "$scope" "$project")
-        run_wire "$exe" --remove all "${args[@]}" || { printf '  facet wire --remove all failed for %s scope %s\n' "$scope" "$project" >&2; problems=1; }
-    done < <(recorded_wire_groups)
-    if [[ -L "$CURRENT" ]]; then rm -f -- "$CURRENT"; printf '  OK Removed %s\n' "$CURRENT"
-    elif [[ -e "$CURRENT" ]]; then printf '  %s is not a link created by the Facet installer; it was left in place.\n' "$CURRENT" >&2; problems=1; fi
-    if [[ $NO_PATH != 1 ]]; then remove_path; printf '%s\n' '  OK Removed the facet PATH block from shell profiles'; fi
-    rm -f -- "$STATE_FILE"
-    if [[ $PURGE == 1 ]]; then rm -rf -- "$RUNTIMES"; printf '  OK Deleted %s\n' "$RUNTIMES"
-    else printf '  Runtimes kept in %s (use --purge to delete them).\n' "$RUNTIMES"; fi
-    v1_notice
-    [[ $problems == 0 ]] || exit 1
-    printf '\nFacet is uninstalled.\n'
-}
-
-do_rollback() {
-    section 'Roll back'
-    local active target previous
-    active=$(active_runtime)
-    if [[ $VERSION_EXPLICIT == 1 ]]; then target="$VERSION-$OS-$ARCH"; else target=$(read_state previous); fi
-    [[ -n "$target" && "$target" != "$active" ]] || die 'No previous Facet runtime is installed to roll back to.'
-    runtime_record_ok "$target" || die "Runtime $target is not installed."
-    [[ $("$(runtime_dir "$target")/bin/facet" version 2>/dev/null) == "facet v${target%-$OS-$ARCH}" ]] || die "Runtime $target does not run; reinstall it."
-    activate "$target"
-    write_state "$target" "$active"
-    printf '  OK Active runtime: %s\n' "$target"
-    refresh_wirings || die 'Facet was rolled back, but refreshing the recorded wirings failed; see the output above.'
-}
-
-do_install() {
-    local runtime_name runtime deps archive_hash='' name base cache selected reuse=0 missing=() recorded item composer
-    runtime_name="$VERSION-$OS-$ARCH"; runtime=$(runtime_dir "$runtime_name"); deps="$runtime/dependencies"
-    if [[ -z "$COMPONENTS" && -d "$runtime" ]]; then COMPONENTS=$(recorded_components "$runtime"); fi
-    COMPONENTS=${COMPONENTS:-remotion,piper}
-    if [[ $YES != 1 ]]; then
-        local options=()
-        while IFS=$'\t' read -r kind id version value windows linux darwin size capability; do
-            [[ "$kind" != component ]] || options+=("$id" "$id | $size | $capability")
-        done < "$MANIFEST"
-        COMPONENTS=$(choose 'Optional production tools (plain input: numbers or names, comma separated; none for core only)' 1 "$COMPONENTS" "${options[@]}")
-    fi
-    [[ "$COMPONENTS" != all ]] || COMPONENTS=$(awk -F '\t' '$1=="component" {printf "%s%s", sep, $2; sep=","}' "$MANIFEST")
-    SELECTED=()
-    local raw
-    IFS=',' read -r -a raw <<< "$COMPONENTS"
-    for item in "${raw[@]:-}"; do
-        item=${item// /}; [[ -n "$item" ]] || continue
-        if [[ "$item" != none ]]; then [[ $(definition "$item" 1 2>/dev/null) == component ]] || die "Unknown component: $item"; fi
-        SELECTED+=("$item")
-    done
-    ((${#SELECTED[@]})) || SELECTED=(none)
-    has() { local s; for s in "${SELECTED[@]}"; do [[ "$s" != "$1" ]] || return 0; done; return 1; }
-    if has none && ((${#SELECTED[@]} != 1)); then die 'none cannot be combined with components.'; fi
-    printf '\n  Action:      %s\n  Version:     %s\n  Components:  %s\n  Runtime:     %s\n' "$ACTION" "$VERSION" "${SELECTED[*]}" "$runtime"
-    if [[ $FROM_SOURCE == 1 ]]; then
-        printf '  Build:       on this computer by Go %s (%s)\n' "$GO_VERSION" "$(if [[ -n "$TOOLCHAIN" ]]; then printf 'from %s' "$TOOLCHAIN"; else definition go 8; fi)"
-    fi
-    [[ $YES == 1 ]] || [[ $(ask 'Continue?' y) =~ ^(y|yes)$ ]] || die 'Installation cancelled.'
-
-    section 'Install and verify'
-    local program
-    for program in awk grep curl unzip zipinfo; do command -v "$program" >/dev/null || die "Install required utility: $program"; done
-    start_log
-    mkdir -p "$RUNTIMES"
-    if [[ -z "$ARCHIVE" ]]; then
-        base="https://github.com/$(definition facet 4)/releases/download/v$VERSION"
-        cache="$FACET_HOME_DIR/cache"; mkdir -p "$cache"
-        SUMS="$TEMP/SHA256SUMS.txt"
-        step 'Check release download' fetch "$base/SHA256SUMS.txt" "$SUMS"
-        name=$(select_archive "$SUMS" '') || exit 1
-        ARCHIVE="$cache/$name"
-        local expected
-        expected=$(awk -v name="$name" '{sub(/\r$/,"")} $2==name{print $1}' "$SUMS")
-        if [[ -f "$ARCHIVE" && $(hash_file "$ARCHIVE") == "$expected" ]]; then printf '  OK Reusing verified download\n'; else
-            step 'Download Facet' fetch "$base/$name" "$ARCHIVE.partial"
-            verify_checksum "$ARCHIVE.partial" "$SUMS" "$name"; mv "$ARCHIVE.partial" "$ARCHIVE"
-        fi
-    else
-        name=$(select_archive "$SUMS" "$(hash_file "$ARCHIVE")") || exit 1
-    fi
-    verify_checksum "$ARCHIVE" "$SUMS" "$name"; archive_hash=$(hash_file "$ARCHIVE")
-
-    if [[ -d "$runtime" ]]; then
-        if runtime_intact "$runtime" && grep -q "\"archive_sha256\": \"$archive_hash\"" "$runtime/components.json"; then
-            reuse=1; printf '  OK Reusing installed runtime %s\n' "$runtime_name"
-        else
-            printf '  Installed runtime %s is incomplete or modified; replacing it with a verified copy.\n' "$runtime_name"
-        fi
-    fi
-    if [[ $reuse == 0 ]]; then
-        # The new runtime is complete before the old one is touched, so a
-        # failed build or unpack leaves the installed Facet as it was.
-        STAGE=$(mktemp -d "$RUNTIMES/.facet-stage-XXXXXX")
-        if [[ "$name" == "facet-$VERSION-source.zip" ]]; then source_build "$STAGE"; else expand_zip "$ARCHIVE" "$STAGE"; fi
-        local required
-        for required in bin/facet dependencies/remotion-composer/package-lock.json; do [[ -f "$STAGE/$required" ]] || die "Release missing $required"; done
-        chmod +x "$STAGE/bin/facet"
-        [[ $("$STAGE/bin/facet" version) == "facet v$VERSION" ]] || die 'Binary version mismatch.'
-        (cd "$STAGE" && find bin dependencies -type f | LC_ALL=C sort | while IFS= read -r f; do "${SHA_CMD[@]}" "$f"; done) > "$STAGE/.facet-files.sha256"
-        if [[ -d "$runtime" ]]; then
-            ASIDE="$RUNTIMES/.facet-old-$runtime_name-$$"; ASIDE_TARGET=$runtime
-            mv -- "$runtime" "$ASIDE"
-        fi
-        # Components are installed at the final path: Python virtual
-        # environments and npm launchers record absolute paths.
-        mv -- "$STAGE" "$runtime"; STAGE=''; NEW_RUNTIME=$runtime
-        missing=("${SELECTED[@]}")
-    else
-        recorded=",$(recorded_components "$runtime"),"
-        for item in "${SELECTED[@]}"; do [[ "$item" == none || "$recorded" == *",$item,"* ]] || missing+=("$item"); done
-    fi
-    mkdir -p "$deps"
-    export PATH="$deps/node/bin:$deps/piper/bin:$PATH"
-    needs() { local s; for s in "${missing[@]:-}"; do [[ "$s" != "$1" ]] || return 0; done; return 1; }
-
-    if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then step 'Install media tools' system_package ffmpeg; fi
-    step 'Check FFmpeg' ffmpeg -version; step 'Check FFprobe' ffprobe -version
-    composer="$runtime/$(definition remotion 4)"
-    if needs remotion || needs hyperframes; then
-        if ! node_compatible; then
-            if [[ "$OS" == linux ]]; then step 'Install private Node.js runtime' install_linux_node "$deps"; else step 'Install Node.js' system_package node; fi
-        fi
-        node_compatible || die "Node.js $(definition node 4)+ is required."
-        command -v npm >/dev/null || die 'npm is missing; install it and rerun.'
-    fi
-    if needs remotion; then
-        (cd "$composer" && step 'Install Remotion packages' npm ci --no-audit --no-fund && step 'Prepare Remotion browser' node node_modules/@remotion/cli/remotion-cli.js browser ensure)
-        if [[ "$OS" == linux ]] && browser_libraries_missing "$composer"; then
-            step 'Install browser system libraries' system_package browser-libs || printf '%s\n' '  Browser libraries are missing; rendering will fail until they are installed.' >&2
-        fi
-    fi
-    local hf="$deps/hyperframes" hf_entry="$deps/hyperframes/node_modules/hyperframes/bin/hyperframes.mjs"
-    if needs hyperframes; then
-        mkdir -p "$hf"
-        [[ -f "$hf/package.json" ]] || printf '{"private":true,"dependencies":{"hyperframes":"%s"}}\n' "$(definition hyperframes 3)" > "$hf/package.json"
-        (cd "$hf" && step "Install HyperFrames $(definition hyperframes 3)" npm install --no-audit --no-fund)
-        step 'Prepare HyperFrames browser' node "$hf_entry" browser ensure
-    fi
-    local python="$deps/piper/bin/python" voices="$deps/voices"
-    if needs piper; then
-        # Debian and Ubuntu ship venv without ensurepip until python3-venv is
-        # installed, so a Python that imports venv can still fail to create
-        # one, and leave a half-made environment without pip behind.
-        if ! command -v python3 >/dev/null || ! python3 -c 'import sys, venv, ensurepip' >/dev/null 2>&1; then step 'Install Python for Piper' system_package python; fi
-        if ! "$python" -m pip --version >/dev/null 2>&1; then
-            rm -rf -- "$deps/piper"
-            step 'Create Piper environment' python3 -m venv "$deps/piper"
-        fi
-        mkdir -p "$voices"
-        step "Install Piper $(definition piper 3)" "$python" -m pip install --only-binary=:all: "piper-tts==$(definition piper 3)"
-        step 'Download speech model' "$python" -m piper.download_voices --download-dir "$voices" "$(definition piper 4)"
-    fi
-
-    verify_media() (
-        set -e
-        local dir="$TEMP/verify" video
-        mkdir -p "$dir"; video="$dir/test.mp4"
-        ffmpeg -v error -f lavfi -i color=c=blue:s=320x180:r=24:d=1 -c:v libx264 -pix_fmt yuv420p -y "$video"
-        if has remotion; then
-            video="$dir/render.mp4"
-            printf '{"width":320,"height":180,"fps":24,"duration_seconds":1,"output_path":%s,"cuts":[{"type":"text_card","text":"Facet setup","in_seconds":0,"out_seconds":1}]}\n' "$(json_string "$video")" > "$dir/render.json"
-            # The runtime's own composer, beside its executable, is what
-            # renders: a development override must not redirect the check.
-            (cd "$dir" && env -u FACET_REMOTION_COMPOSER "$runtime/bin/facet" tools run video_compose --input "$dir/render.json")
-        fi
-        ffprobe -v error -show_streams "$video"; ffmpeg -v error -i "$video" -f null -
-        if has piper; then
-            printf 'Facet setup verification.\n' | "$python" -m piper --model "$voices/$(definition piper 4).onnx" --output_file "$dir/voice.wav"
-            ffmpeg -v error -i "$dir/voice.wav" -f null -
-        fi
-        if has hyperframes; then
-            mkdir -p "$dir/html"; cp "$SCRIPT_DIR/installer/verify.html" "$dir/html/index.html"
-            (cd "$dir/html" && node "$hf_entry" render --output "$dir/html/render.mp4" --fps 24)
-            ffmpeg -v error -i "$dir/html/render.mp4" -f null -
-        fi
-    )
-    local verified=true
-    if [[ $SKIP_VERIFY == 0 ]]; then step 'Verify selected local capabilities' verify_media
-    else verified=false; printf '%s\n' '  Verification skipped: media readiness is unverified.'; fi
-
-    local list='' s
-    for s in "${SELECTED[@]}"; do [[ "$s" == none ]] || list="${list:+$list, }$(json_string "$s")"; done
-    if [[ $reuse == 1 ]]; then
-        recorded=$(recorded_components "$runtime")
-        IFS=',' read -r -a raw <<< "$recorded"
-        for s in "${raw[@]:-}"; do [[ -z "$s" || ", $list," == *"\"$s\""* ]] || list="${list:+$list, }$(json_string "$s")"; done
-    fi
-    printf '{\n  "schema": 1,\n  "version": %s,\n  "os": %s,\n  "arch": %s,\n  "components": [%s],\n  "verified": %s,\n  "archive_sha256": %s,\n  "installed_at": %s\n}\n' \
-        "$(json_string "$VERSION")" "$(json_string "$OS")" "$(json_string "$ARCH")" "$list" "$verified" "$(json_string "$archive_hash")" "$(json_string "$(utc_now)")" > "$runtime/components.json"
-
-    local active previous refresh_failed=0
-    active=$(active_runtime)
-    activate "$runtime_name"
-    previous=$(read_state previous)
-    if [[ -n "$active" && "$active" != "$runtime_name" ]]; then previous=$active; fi
-    write_state "$runtime_name" "$previous"
-    COMMITTED=1
-    printf '  OK Active runtime: %s\n' "$runtime_name"
-    prune_runtimes "$runtime_name" "$previous"
-    if [[ $NO_PATH != 1 ]]; then add_path; else printf '  PATH unchanged (--no-path). Run the command as %s\n' "$CURRENT/bin/facet"; fi
-    refresh_wirings || refresh_failed=1
-
-    section 'Wire agentic CLIs'
-    local exe="$CURRENT/bin/facet" detected='' cli
-    for cli in $SUPPORTED_CLIS; do if command -v "$cli" >/dev/null; then detected="${detected:+$detected,}$cli"; fi; done
-    if [[ -z "$WIRE" && $YES != 1 ]]; then
-        local wire_options=()
-        for cli in $SUPPORTED_CLIS; do
-            if [[ ",$detected," == *",$cli,"* ]]; then wire_options+=("$cli" "$cli - detected"); else wire_options+=("$cli" "$cli - not detected"); fi
+fb_write_receipt() {
+    {
+        printf 'format\tfacet-install-v1\nversion\t%s\ncommit\t%s\nrepository\t%s\ntarget\t%s\nroot\t%s\n' \
+            "$fb_version" "$fb_commit" "$fb_repository" "$fb_target" "$fb_root"
+        for fb_wr_product in core app; do
+            if fb_has_line "$fb_work/new.products" "$fb_wr_product"; then printf 'product\t%s\n' "$fb_wr_product"; fi
         done
-        WIRE=$(choose 'Wire Facet into which CLIs? (none to skip)' 1 "${detected:-none}" "${wire_options[@]}")
-        if [[ "$WIRE" != none ]]; then
-            SCOPE=$(choose 'Wire for all your projects (user) or one project?' 0 "$SCOPE" user 'user - every project' project 'project - one directory')
-            if [[ "$SCOPE" == project && -z "$PROJECT" ]]; then PROJECT=$(absolute "$(ask 'Project directory' .)"); fi
-        fi
-    fi
-    if [[ -n "$WIRE" && "$WIRE" != none ]]; then
-        local args=()
-        while IFS= read -r a; do args+=("$a"); done < <(wire_scope_args "$SCOPE" "$PROJECT")
-        run_wire "$exe" "$WIRE" "${args[@]}" || die 'facet wire failed; Facet is installed. Rerun facet wire after fixing the reported problem.'
-    else
-        printf '%s\n' '  Not wired. Later: facet wire <claude|codex|copilot|opencode|compa|all> [--scope user|project]'
-    fi
-    v1_notice
-    [[ $refresh_failed == 0 ]] || die 'Facet is installed and active, but refreshing the recorded wirings failed; see the output above.'
-    printf '\nFacet v%s is ready.\n  Check it: facet doctor\n' "$VERSION"
+        awk '{print "place\t" $0}' "$fb_work/new.places"
+        awk -F '\t' '$1=="root" {print "file\t" $0}' "$fb_work/new.files" | sort
+        awk -F '\t' '$1!="root" {print "file\t" $0}' "$fb_work/new.files"
+        awk '{print "link\t" $0}' "$fb_work/new.links"
+    } > "$fb_work/receipt.new"
+    fb_limit "$fb_work/receipt.new" "$fb_metadata_limit"
 }
 
-# ------------------------------------------------------------------- main
-section 'FACET'
-printf 'Video production tools for your agent.\nInstaller %s | %s/%s\n' "$VERSION" "$OS" "$ARCH"
-if [[ $YES != 1 && $ACTION_EXPLICIT == 0 && -L "$CURRENT" ]]; then
-    ACTION=$(choose 'Facet is installed. What should setup do?' 0 install install 'install - add components or repair' update 'update - install the selected version' rollback 'rollback - return to the previous runtime' uninstall 'uninstall - remove Facet')
-fi
-case "$ACTION" in
-    uninstall) do_uninstall;;
-    rollback) do_rollback;;
-    install|update) do_install;;
-esac
+# Run the installed facet; a failure is reported by the caller.
+fb_facet() {
+    "$fb_root/bin/facet" "$@"
+}
+
+facet_install_main() (
+    set -efu
+    umask 077
+    LC_ALL=C
+    export LC_ALL
+    unset CDPATH TAR_OPTIONS GZIP UNZIP ZIPINFO
+    fb_tab=$(printf '\t')
+    fb_metadata_limit=1048576
+    fb_archive_limit=268435456
+    fb_mode= fb_requested_version=latest fb_repository=kayiik/facet fb_components=ask
+    fb_distribution= fb_root_arg= fb_project= fb_harness_args=
+    fb_operation=install fb_path_links=yes fb_launch=yes fb_open=yes fb_dry_run=no
+    fb_cwd=$(pwd -P) || fb_fail "Cannot resolve the current directory"
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --mode|--version|--install-dir|--project|--harness|--distribution-dir|--repository|--components)
+                [ "$#" -ge 2 ] && [ -n "$2" ] || fb_fail "Missing value for $1"
+                case "$2" in -*) fb_fail "Missing value for $1 (received option $2)" ;; esac
+                case "$1" in
+                    --mode) fb_mode=$2 ;;
+                    --version) fb_requested_version=$2 ;;
+                    --install-dir) fb_root_arg=$2 ;;
+                    --project) fb_project=$2 ;;
+                    --harness) fb_harness_args="$fb_harness_args,$2" ;;
+                    --distribution-dir) fb_distribution=$2 ;;
+                    --repository) fb_repository=$2 ;;
+                    --components) fb_components=$2 ;;
+                esac
+                shift 2 ;;
+            --no-path) fb_path_links=no; shift ;;
+            --no-launch) fb_launch=no; shift ;;
+            --no-open) fb_open=no; shift ;;
+            --dry-run) fb_dry_run=yes; shift ;;
+            --upgrade|--verify|--uninstall)
+                [ "$fb_operation" = install ] || fb_fail "Choose only one of --upgrade, --verify, --uninstall"
+                fb_operation=${1#--}; shift ;;
+            --help|-h)
+                printf '%s\n' \
+                    'Usage: sh install.sh [--mode app|core|bundle] [--harness NAME] [--project DIR] [--version latest|VERSION]' \
+                    '  --mode app (default)    facet and the Facet App, with a Start entry' \
+                    '  --mode core             facet only' \
+                    '  --mode bundle           facet, wired into each --harness claude|codex|copilot|opencode|compa' \
+                    '  --project DIR           Wire the CLIs for this project instead of for you' \
+                    '  --components ask|defaults|all|none   What facet setup installs at the end (default: ask)' \
+                    '  --install-dir DIR       Default: $HOME/.local/lib/facet' \
+                    '  --distribution-dir DIR  Use a local copy of a release; never download' \
+                    '  --repository OWNER/NAME Default: kayiik/facet; no ambient authentication' \
+                    '  --no-path --no-launch --no-open --dry-run' \
+                    '  --upgrade | --verify | --uninstall   (--uninstall --harness NAME removes only those wirings)' \
+                    'Needs only native tools: curl, tar, gzip and sha256sum or shasum. No Python, Go or Node.' \
+                    'Install paths must not overlap the App data, FACET_HOME or an explicit COMPA_HOME.' \
+                    'Checksums provide integrity, not cryptographic authenticity. Trust the download channel.'
+                exit 0 ;;
+            *) fb_fail "Unknown option: $1" ;;
+        esac
+    done
+    case "$fb_mode" in ''|app|core|bundle) ;; *) fb_fail "Unsupported mode: $fb_mode (use app, core or bundle)" ;; esac
+    case "$fb_components" in ask|defaults|all|none) ;; *) fb_fail "Unsupported --components $fb_components (use ask, defaults, all or none)" ;; esac
+    fb_harnesses=$(printf '%s\n' "$fb_harness_args" | awk -F ',' '{
+        for (i = 1; i <= NF; i++) { gsub(/^ +| +$/, "", $i); if ($i != "" && !seen[$i]++) out = out (out == "" ? "" : ",") $i }
+        print out
+    }')
+    for fb_name in $(printf '%s\n' "$fb_harnesses" | tr ',' ' '); do
+        case "$fb_name" in claude|codex|copilot|opencode|compa) ;; *) fb_fail "Unknown harness '$fb_name'; use claude, codex, copilot, opencode or compa" ;; esac
+    done
+    case "$fb_operation" in
+        install|upgrade)
+            [ "$fb_mode" != bundle ] || [ -n "$fb_harnesses" ] || fb_fail "--mode bundle needs --harness claude, codex, copilot, opencode or compa"
+            [ -z "$fb_harnesses" ] || [ "$fb_mode" = bundle ] || fb_fail "--harness goes with --mode bundle" ;;
+        verify)
+            [ -z "$fb_harnesses" ] && [ -z "$fb_project" ] ||
+                fb_fail "--verify checks the whole installation; leave out --harness and --project" ;;
+    esac
+    [ -z "$fb_project" ] || [ -n "$fb_harnesses" ] || fb_fail "--project goes with --harness"
+    printf '%s\n' "$fb_repository" | awk '
+        NR!=1 || $0 !~ /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/ {bad=1}
+        END {exit bad}
+    ' || fb_fail "Repository must be an explicit owner/name, not a URL or path"
+    if [ "$fb_requested_version" != latest ]; then
+        fb_requested_version=${fb_requested_version#v}
+        printf '%s\n' "$fb_requested_version" | awk '
+            NR!=1 || $0 !~ /^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.+-]+)?$/ {bad=1}
+            END {exit bad}
+        ' || fb_fail "Invalid release version"
+    fi
+    [ -n "${HOME:-}" ] || fb_fail "HOME is required for a per-user installation"
+    fb_home=$(fb_path "$HOME")
+    fb_root=$(fb_path "${fb_root_arg:-$fb_home/.local/lib/facet}")
+    fb_bin=$fb_home/.local/bin
+    fb_receipt=$fb_root/install-receipt.tsv
+    fb_lock=$fb_root.facet-install.lock
+    [ "$fb_root" != / ] && [ "$fb_root" != "$fb_home" ] || fb_fail "Install into a dedicated directory, not / or HOME"
+    fb_no_links "$fb_home"
+    fb_no_links "$fb_root"
+    [ -d "$fb_home" ] || fb_fail "HOME must be an existing directory"
+    [ ! -e "$fb_root" ] || [ -d "$fb_root" ] || fb_fail "Install directory is not a directory"
+    fb_wire_scope=
+    if [ -n "$fb_project" ]; then
+        fb_project=$(fb_path "$fb_project")
+        fb_no_links "$fb_project"
+        [ -d "$fb_project" ] || fb_fail "--project must be an existing folder"
+        if fb_under "$fb_root" "$fb_project" || fb_under "$fb_project" "$fb_root"; then
+            fb_fail "The installation folder and the project must not overlap"
+        fi
+    fi
+    if [ -n "$fb_distribution" ]; then
+        fb_distribution=$(fb_path "$fb_distribution")
+        fb_no_links "$fb_distribution"
+        [ -d "$fb_distribution" ] || fb_fail "--distribution-dir must be an existing directory"
+        if fb_under "$fb_root" "$fb_distribution" || fb_under "$fb_distribution" "$fb_root"; then
+            fb_fail "Installation and distribution directories must not overlap"
+        fi
+    fi
+    [ ! -e "$fb_lock" ] && [ ! -L "$fb_lock" ] ||
+        fb_fail "An installation operation or stale lock exists: $fb_lock"
+    fb_system=$(uname -s) || fb_fail "Cannot determine native system"
+    fb_machine=$(uname -m) || fb_fail "Cannot determine native architecture"
+    case "$fb_system" in Linux) fb_system=linux ;; Darwin) fb_system=darwin ;;
+        *) fb_fail "Unsupported native system: $fb_system (use install.ps1 on Windows)" ;; esac
+    case "$fb_machine" in x86_64|amd64) fb_arch=amd64 ;; arm64|aarch64) fb_arch=arm64 ;;
+        *) fb_fail "Unsupported native architecture: $fb_machine" ;; esac
+    fb_target=$fb_system/$fb_arch
+    for fb_command in awk sort cut cmp head wc cat mkdir mktemp chmod cp mv ln rm rmdir find readlink ls tr; do
+        command -v "$fb_command" >/dev/null 2>&1 || fb_fail "Required native tool missing: $fb_command"
+    done
+    if command -v sha256sum >/dev/null 2>&1; then fb_hasher=sha256sum
+    elif command -v shasum >/dev/null 2>&1; then fb_hasher=shasum
+    else fb_fail "SHA-256 verification requires sha256sum or shasum; nothing was installed"; fi
+    fb_protect_state
+    fb_temp_parent=$(CDPATH= cd -P "${TMPDIR:-/tmp}" && pwd -P) ||
+        fb_fail "Temporary directory must already exist"
+    fb_temp_parent=$(fb_path "$fb_temp_parent")
+    fb_no_links "$fb_temp_parent"
+    if fb_under "$fb_temp_parent" "$fb_root" || fb_under "$fb_temp_parent" "$fb_bin" ||
+        { [ -n "$fb_project" ] && fb_under "$fb_temp_parent" "$fb_project"; } ||
+        { [ -n "$fb_distribution" ] && fb_under "$fb_temp_parent" "$fb_distribution"; }; then
+        fb_fail "Staging requires an external temporary directory; set TMPDIR outside project, release and installation paths"
+    fi
+    fb_work=$(mktemp -d "$fb_temp_parent/facet-install.XXXXXXXX") ||
+        fb_fail "Cannot create safe external staging directory"
+    fb_locked=no fb_committed=no fb_sequence=0
+    : > "$fb_work/order"
+    : > "$fb_work/temporaries"
+    : > "$fb_work/directories.created"
+    trap 'fb_exit=$?; trap - 0 HUP INT TERM; fb_cleanup "$fb_exit"; exit $?' 0
+    trap 'exit 129' HUP
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    mkdir "$fb_work/distribution" "$fb_work/backups" "$fb_work/journal"
+    for fb_part in plan notes new.products new.places new.files new.links; do
+        : > "$fb_work/$fb_part"
+    done
+    fb_read_receipt
+    [ "$fb_operation" = install ] || [ "$fb_owned" != none ] ||
+        fb_fail "No Facet installation in $fb_root; nothing to $fb_operation"
+    fb_version=$(fb_owned_meta version)
+
+    if [ "$fb_operation" = verify ]; then
+        : > "$fb_work/problems"
+        while IFS="$fb_tab" read -r fb_base fb_rel fb_hash; do
+            if [ "$fb_base" = root ]; then fb_dir=$fb_root
+            else fb_dir=$(awk -F '\t' -v id="$fb_base" '$1==id {print $6}' "$fb_work/owned.places"); fi
+            fb_same_file "$fb_dir/$fb_rel" "$fb_hash" || printf '%s\n' "$fb_dir/$fb_rel" >> "$fb_work/problems"
+        done < "$fb_work/owned.files"
+        while IFS="$fb_tab" read -r fb_link fb_link_target; do
+            [ -L "$fb_link" ] && [ "$(readlink "$fb_link")" = "$fb_link_target" ] ||
+                printf '%s\n' "$fb_link" >> "$fb_work/problems"
+        done < "$fb_work/owned.links"
+        if [ -s "$fb_work/problems" ]; then
+            printf 'facet install: These Facet files were changed or removed since installation:\n' >&2
+            awk '{print "  " $0}' "$fb_work/problems" >&2
+            exit 1
+        fi
+        printf 'Verified Facet %s (%s) in %s: every owned file and launch link matches the receipt\n' \
+            "$fb_version" "$(awk 'BEGIN {ORS=""} {print (NR>1?", ":"") $0}' "$fb_work/owned.products")" "$fb_root"
+        fb_committed=yes
+        exit 0
+    fi
+
+    if [ "$fb_operation" = uninstall ]; then
+        if [ -n "$fb_harnesses" ]; then
+            if [ "$fb_dry_run" = yes ]; then
+                printf 'Dry-run: facet wire --remove %s%s\n' "$fb_harnesses" "${fb_project:+ --project $fb_project}"
+                fb_committed=yes
+                exit 0
+            fi
+            if [ -n "$fb_project" ]; then
+                fb_facet wire --remove "$fb_harnesses" --project "$fb_project" || fb_fail "facet wire --remove $fb_harnesses failed"
+            else
+                fb_facet wire --remove "$fb_harnesses" || fb_fail "facet wire --remove $fb_harnesses failed"
+            fi
+            printf 'Removed Facet from %s\n' "$fb_harnesses"
+            fb_committed=yes
+            exit 0
+        fi
+        cp "$fb_work/owned.products" "$fb_work/new.products"
+        cp "$fb_work/owned.links" "$fb_work/new.links"
+        fb_commit=$(fb_owned_meta commit)
+        fb_target=$(fb_owned_meta target)
+        while IFS="$fb_tab" read -r fb_base fb_rel fb_hash; do
+            [ "$fb_base" = root ] || continue
+            fb_check_file "$fb_root/$fb_rel" "$fb_hash"
+            fb_plan_file "$fb_root/$fb_rel" "$fb_hash" - - 644 "$fb_root"
+        done < "$fb_work/owned.files"
+        while IFS="$fb_tab" read -r fb_id fb_kind fb_name fb_place_scope fb_place_version fb_dir; do
+            fb_plan_place_removal "$fb_id" "$fb_dir"
+        done < "$fb_work/owned.places"
+        while IFS="$fb_tab" read -r fb_link fb_link_target; do
+            if [ -L "$fb_link" ] && [ "$(readlink "$fb_link")" = "$fb_link_target" ]; then
+                printf 'link\t%s\t%s\t-\n' "$fb_link" "$fb_link_target" >> "$fb_work/plan"
+            else
+                fb_note "Kept $fb_link: it no longer points at this Facet"
+            fi
+        done < "$fb_work/owned.links"
+        fb_plan_file "$fb_receipt" "$fb_old_receipt" - - 644 "$fb_root"
+    else
+        for fb_command in tar gzip; do
+            command -v "$fb_command" >/dev/null 2>&1 || fb_fail "Required native tool missing: $fb_command"
+        done
+        if [ -z "$fb_distribution" ]; then
+            command -v curl >/dev/null 2>&1 || fb_fail "Downloading requires curl; nothing was installed"
+        fi
+        fb_url=https://github.com/$fb_repository/releases/latest/download
+        [ "$fb_requested_version" = latest ] ||
+            fb_url=https://github.com/$fb_repository/releases/download/v$fb_requested_version
+        fb_fetch SHA256SUMS "$fb_metadata_limit"
+        fb_checksums
+        for fb_metadata in build-manifest.json manifest.tsv; do
+            fb_fetch "$fb_metadata" "$fb_metadata_limit"
+            fb_checksum "$fb_metadata"
+        done
+        fb_manifest
+        fb_owned_version=$fb_version
+        fb_version=$(awk -F '\t' '$1=="version"{print $2}' "$fb_work/distribution/manifest.tsv")
+        fb_commit=$(awk -F '\t' '$1=="commit"{print $2}' "$fb_work/distribution/manifest.tsv")
+        [ "$fb_requested_version" = latest ] || [ "$fb_requested_version" = "$fb_version" ] ||
+            fb_fail "Requested version differs from the verified release manifest"
+        if [ "$fb_operation" = install ] && [ "$fb_owned" = current ] && [ "$fb_owned_version" != "$fb_version" ]; then
+            fb_fail "Facet $fb_owned_version is installed. Run with --upgrade to move it to $fb_version, or add --version $fb_owned_version to add to it."
+        fi
+        case "$fb_mode" in
+            core|bundle) fb_requested="core" ;;
+            app) fb_requested="core app" ;;
+            *) if [ "$fb_operation" = install ]; then fb_requested="core app"; else fb_requested=; fi ;;
+        esac
+        for fb_product in core app; do
+            if fb_has_line "$fb_work/owned.products" "$fb_product" ||
+                case " $fb_requested " in *" $fb_product "*) true ;; *) false ;; esac; then
+                printf '%s\n' "$fb_product" >> "$fb_work/new.products"
+            fi
+        done
+        : > "$fb_work/desired.files"
+        while IFS= read -r fb_product; do
+            fb_archive=$(fb_select "$fb_product" "$fb_target")
+            fb_fetch "$fb_archive" "$fb_archive_limit"
+            fb_checksum "$fb_archive"
+            case "$fb_archive" in
+                *.tar.gz) fb_extract_tar "$fb_product" "$fb_archive" "$fb_work/payload-$fb_product" ;;
+                *) fb_fail "Unexpected archive for $fb_target: $fb_archive" ;;
+            esac
+            while IFS="$fb_tab" read -r fb_rel fb_hash; do
+                printf '%s\t%s\t%s\t%s\n' "$fb_rel" "$fb_hash" "$fb_work/payload-$fb_product/$fb_rel" "$(fb_mode_of "$fb_rel")" \
+                    >> "$fb_work/desired.files"
+            done < "$fb_work/$fb_product.files"
+        done < "$fb_work/new.products"
+        awk -F '\t' '{name=tolower($1); if (seen[name]++) bad=1; n=split($1,parts,"/"); prefix=""
+            for (i=1;i<n;i++) {prefix=prefix (i>1?"/":"") tolower(parts[i]); dirs[prefix]=1}}
+            END {for (name in seen) if (name in dirs) bad=1; exit bad}' "$fb_work/desired.files" ||
+            fb_fail "Products collide on an installation path"
+        while IFS="$fb_tab" read -r fb_rel fb_hash fb_source fb_permissions; do
+            fb_old=$(awk -F '\t' -v n="$fb_rel" '$1=="root" && $2==n {print $3}' "$fb_work/owned.files")
+            printf 'root\t%s\t%s\n' "$fb_rel" "$fb_hash" >> "$fb_work/new.files"
+            if [ -n "$fb_old" ] && [ "$fb_old" = "$fb_hash" ]; then
+                fb_check_file "$fb_root/$fb_rel" "$fb_old"
+                continue
+            fi
+            fb_plan_file "$fb_root/$fb_rel" "${fb_old:--}" "$fb_hash" "$fb_source" "$fb_permissions" "$fb_root"
+        done < "$fb_work/desired.files"
+        while IFS="$fb_tab" read -r fb_base fb_rel fb_hash; do
+            [ "$fb_base" = root ] || continue
+            awk -F '\t' -v n="$fb_rel" '$1==n {found=1} END {exit (!found)}' "$fb_work/desired.files" ||
+                fb_plan_file "$fb_root/$fb_rel" "$fb_hash" - - 644 "$fb_root"
+        done < "$fb_work/owned.files"
+        fb_next_id=$(awk -F '\t' 'BEGIN {max=0} {if ($1+0 > max) max=$1+0} END {print max+1}' "$fb_work/owned.places")
+        if fb_has_line "$fb_work/new.products" app; then
+            fb_start=$(fb_start_dir)
+            fb_no_links "$fb_start"
+            fb_write_start "$fb_work/start" "$fb_work/start.files"
+            fb_start_id=$(awk -F '\t' '$2=="start" {print $1}' "$fb_work/owned.places")
+            if [ -n "$fb_start_id" ] && ! fb_place_unchanged "$fb_start_id" "$fb_start" &&
+                awk -F '\t' -v id="$fb_start_id" '$1==id {print $2}' "$fb_work/owned.files" |
+                { while IFS= read -r fb_rel; do [ -e "$fb_start/$fb_rel" ] && exit 0; done; exit 1; }; then
+                fb_note "Kept the Start entry in $fb_start: it was changed since installation"
+                awk -F '\t' -v id="$fb_start_id" '$1==id' "$fb_work/owned.places" >> "$fb_work/new.places"
+                awk -F '\t' -v id="$fb_start_id" '$1==id' "$fb_work/owned.files" >> "$fb_work/new.files"
+            else
+                [ -n "$fb_start_id" ] || { fb_start_id=$fb_next_id; fb_next_id=$((fb_next_id + 1)); }
+                printf '%s\tstart\t-\t-\t%s\t%s\n' "$fb_start_id" "$fb_version" "$fb_start" >> "$fb_work/new.places"
+                while IFS="$fb_tab" read -r fb_rel fb_permissions; do
+                    fb_hash=$(fb_hash "$fb_work/start/$fb_rel")
+                    fb_old=$(awk -F '\t' -v id="$fb_start_id" -v n="$fb_rel" '$1==id && $2==n {print $3}' "$fb_work/owned.files")
+                    if [ -n "$fb_old" ] && ! fb_same_file "$fb_start/$fb_rel" "$fb_old"; then fb_old=; fi
+                    printf '%s\t%s\t%s\n' "$fb_start_id" "$fb_rel" "$fb_hash" >> "$fb_work/new.files"
+                    [ "$fb_old" != "$fb_hash" ] || continue
+                    fb_plan_file "$fb_start/$fb_rel" "${fb_old:--}" "$fb_hash" "$fb_work/start/$fb_rel" "$fb_permissions" "$fb_start"
+                done < "$fb_work/start.files"
+            fi
+        fi
+        cp "$fb_work/owned.links" "$fb_work/new.links"
+        if [ "$fb_path_links" = yes ]; then
+            for fb_name in facet facet-app; do
+                [ "$fb_name" = facet ] || fb_has_line "$fb_work/new.products" app || continue
+                ! awk -F '\t' -v p="$fb_bin/$fb_name" '$1==p {found=1} END {exit (!found)}' "$fb_work/owned.links" || continue
+                [ ! -e "$fb_bin/$fb_name" ] && [ ! -L "$fb_bin/$fb_name" ] ||
+                    fb_fail "Refusing unowned PATH entry: $fb_bin/$fb_name (use --no-path)"
+                printf 'link\t%s\t-\t%s\n' "$fb_bin/$fb_name" "$fb_root/bin/$fb_name" >> "$fb_work/plan"
+                printf '%s\t%s\n' "$fb_bin/$fb_name" "$fb_root/bin/$fb_name" >> "$fb_work/new.links"
+            done
+        fi
+        fb_write_receipt
+        fb_plan_file "$fb_receipt" "${fb_old_receipt:--}" "$(fb_hash "$fb_work/receipt.new")" "$fb_work/receipt.new" 644 "$fb_root"
+    fi
+
+    # Every planned change is checked before anything is written.
+    while IFS="$fb_tab" read -r fb_type fb_path fb_old fb_new fb_source fb_permissions fb_base; do
+        if [ "$fb_type" = file ]; then
+            fb_no_links "$fb_path"
+            if [ "$fb_old" = - ]; then
+                [ ! -e "$fb_path" ] && [ ! -L "$fb_path" ] ||
+                    fb_fail "Refusing to overwrite a file Facet does not own: $fb_path"
+            else
+                fb_check_file "$fb_path" "$fb_old"
+            fi
+        else
+            fb_no_links "${fb_path%/*}"
+            [ ! -e "${fb_path%/*}" ] || [ -d "${fb_path%/*}" ] || fb_fail "PATH link directory is occupied: ${fb_path%/*}"
+        fi
+    done < "$fb_work/plan"
+
+    if [ "$fb_dry_run" = yes ]; then
+        printf 'Dry-run: %s Facet %s (%s) in %s\n' "$fb_operation" "$fb_version" \
+            "$(awk 'BEGIN {ORS=""} {print (NR>1?", ":"") $0}' "$fb_work/new.products")" "$fb_root"
+        awk -F '\t' '{
+            action = ($3=="-") ? "create" : (($4=="-") ? "remove" : "replace")
+            print "  " action " " $2
+        }' "$fb_work/plan"
+        if [ "$fb_operation" = uninstall ]; then
+            printf 'Afterwards: facet wire --remove all, facet remove all\n'
+        else
+            [ "$fb_operation" != upgrade ] || printf 'Afterwards: facet wire --refresh\n'
+            [ -z "$fb_harnesses" ] || printf 'Afterwards: facet wire %s\n' "$fb_harnesses"
+            [ "$fb_components" = none ] || printf 'Afterwards: facet setup (%s)\n' "$fb_components"
+        fi
+        cat "$fb_work/notes"
+        printf 'Nothing was written, extracted into place, probed or launched; no PATH link or profile changed.\n'
+        printf 'Checksums establish integrity, not cryptographic authenticity.\n'
+        fb_committed=yes
+        exit 0
+    fi
+    if [ "$fb_operation" = uninstall ]; then
+        # The wirings and components are facet's own to remove, before facet goes.
+        if [ -x "$fb_root/bin/facet" ]; then
+            fb_facet wire --remove all </dev/null || fb_note "facet wire --remove all did not finish; check facet wire --status"
+            fb_facet remove all </dev/null || fb_note "Some components were left in $fb_root/dependencies"
+        fi
+    else
+        chmod 755 "$fb_work/payload-core/bin/facet"
+        fb_probe=$("$fb_work/payload-core/bin/facet" version </dev/null 2>"$fb_work/probe.stderr") ||
+            fb_fail "Verified core version probe failed"
+        [ "$fb_probe" = "facet v$fb_version" ] && [ ! -s "$fb_work/probe.stderr" ] ||
+            fb_fail "Core version probe does not match the verified manifest"
+        if fb_has_line "$fb_work/new.products" app; then
+            chmod 755 "$fb_work/payload-app/bin/facet-app"
+            fb_probe=$("$fb_work/payload-app/bin/facet-app" version </dev/null 2>"$fb_work/probe.stderr") ||
+                fb_fail "Verified app version probe failed"
+            [ "$fb_probe" = "facet-app $fb_version" ] && [ ! -s "$fb_work/probe.stderr" ] ||
+                fb_fail "App version probe does not match the verified manifest"
+        fi
+    fi
+    fb_mkdir "${fb_root%/*}"
+    mkdir "$fb_lock" || fb_fail "Cannot acquire installation lock: $fb_lock"
+    fb_locked=yes
+    # The receipt goes last, so a failure anywhere before it leaves the old receipt describing the old files.
+    awk -F '\t' -v receipt="$fb_receipt" '$2!=receipt' "$fb_work/plan" > "$fb_work/plan.ordered"
+    awk -F '\t' -v receipt="$fb_receipt" '$2==receipt' "$fb_work/plan" >> "$fb_work/plan.ordered"
+    while IFS="$fb_tab" read -r fb_type fb_path fb_old fb_new fb_source fb_permissions fb_base; do
+        if [ "$fb_type" = file ]; then
+            fb_apply_file "$fb_path" "$fb_source" "$fb_old" "$fb_new" "$fb_permissions"
+        else
+            fb_apply_link "$fb_path" "$fb_old" "$fb_new"
+        fi
+    done < "$fb_work/plan.ordered"
+    fb_committed=yes
+    while IFS="$fb_tab" read -r fb_type fb_path fb_old fb_new fb_source fb_permissions fb_base; do
+        [ "$fb_type" = file ] && [ "$fb_new" = - ] || continue
+        fb_prune "$fb_path" "$fb_base"
+    done < "$fb_work/plan"
+    if [ "$fb_operation" = uninstall ]; then
+        for fb_dir in "$fb_root/dependencies" "$fb_root"; do
+            if [ -d "$fb_dir" ] && [ -z "$(ls -A "$fb_dir")" ]; then rmdir "$fb_dir" || true; fi
+        done
+        printf 'Removed Facet'\''s wirings, its components, its unchanged files and launch links. Facet'\''s state (~/.facet), the App'\''s data and files Facet does not own were kept.\n'
+        cat "$fb_work/notes"
+        exit 0
+    fi
+    printf 'Installed Facet %s (%s) in %s\n' "$fb_version" \
+        "$(awk 'BEGIN {ORS=""} {print (NR>1?", ":"") $0}' "$fb_work/new.products")" "$fb_root"
+    cat "$fb_work/notes"
+    printf 'Checksums establish integrity, not cryptographic authenticity; trust the release channel.\n'
+    printf 'facet: %s/bin/facet\n' "$fb_root"
+    if [ -s "$fb_work/new.links" ]; then
+        printf 'Owned launch links: %s (no PATH or shell profile was changed)\n' "$fb_bin"
+    fi
+    if [ "$fb_operation" = upgrade ]; then
+        fb_facet wire --refresh </dev/null ||
+            printf 'facet install: facet wire --refresh did not finish; run it again, or check facet wire --status\n' >&2
+    fi
+    if [ -n "$fb_harnesses" ]; then
+        if [ -n "$fb_project" ]; then
+            fb_facet wire "$fb_harnesses" --project "$fb_project" </dev/null || fb_fail "facet wire $fb_harnesses failed"
+        else
+            fb_facet wire "$fb_harnesses" </dev/null || fb_fail "facet wire $fb_harnesses failed"
+        fi
+    fi
+    fb_setup_failed=no
+    case "$fb_components" in
+        none) ;;
+        defaults) fb_facet setup --yes </dev/null || fb_setup_failed=yes ;;
+        all) fb_facet setup --yes --all </dev/null || fb_setup_failed=yes ;;
+        *)
+            # curl | sh reads the script from stdin; the person answers on the terminal.
+            if (: </dev/tty) 2>/dev/null; then
+                fb_facet setup </dev/tty || fb_setup_failed=yes
+            else
+                fb_facet setup --yes </dev/null || fb_setup_failed=yes
+            fi ;;
+    esac
+    [ "$fb_setup_failed" = no ] ||
+        printf 'facet install: not every component was installed; facet components shows what is missing, and facet install adds it.\n' >&2
+    if fb_has_line "$fb_work/new.products" app && [ "$fb_launch" = yes ] &&
+        { [ -z "$fb_mode" ] || [ "$fb_mode" = app ]; }; then
+        fb_cleanup 0 || exit 1
+        trap - 0 HUP INT TERM
+        if [ "$fb_open" = no ]; then
+            exec "$fb_root/bin/facet-app" --no-browser </dev/null
+        else
+            exec "$fb_root/bin/facet-app" </dev/null
+        fi
+    fi
+)
+
+facet_install_main "$@"

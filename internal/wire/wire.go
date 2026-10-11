@@ -17,12 +17,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
 	"github.com/kayiik/facet/internal/bundle"
-	"github.com/kayiik/facet/internal/facethome"
+	"github.com/kayiik/facet/internal/toolbox"
 )
 
 const usage = `Usage:
@@ -46,8 +45,7 @@ Options:
   --project DIR         the project for project scope (default: the current
                         directory); implies --scope project
   --exe PATH            the facet executable to register as the MCP server
-                        (default: current/bin/facet in Facet's home folder
-                        when it exists, else this facet)
+                        (default: this facet)
   --dry-run             print the exact actions without changing anything
   --remove              reverse a wiring; only recorded, unmodified items are
                         removed
@@ -95,8 +93,8 @@ func newEnv(version string, stdout, stderr io.Writer, exeOverride string) (*env,
 			return nil, err
 		}
 		explicit = true
-	} else if exe, err = StableExecutable(home); err != nil {
-		return nil, fmt.Errorf("cannot determine the facet executable: %w", err)
+	} else if exe = toolbox.Executable(); exe == "" {
+		return nil, errors.New("cannot determine the facet executable")
 	}
 	return &env{
 		home:        filepath.Clean(home),
@@ -129,39 +127,6 @@ func explicitExecutable(path string) (string, error) {
 }
 
 func (e *env) registryPath() string { return RegistryPath(e.home) }
-
-// StableExecutable returns the facet executable to register with CLIs:
-// current/bin/facet[.exe] in Facet's home folder when it exists, so
-// registrations survive upgrades of the active runtime, otherwise the running
-// executable.
-func StableExecutable(home string) (string, error) {
-	if current := CurrentExecutable(home); current != "" {
-		return current, nil
-	}
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Clean(exe), nil
-}
-
-// CurrentExecutable returns current/bin/facet[.exe] in Facet's home folder
-// (~/.facet, or FACET_HOME) when it exists.
-func CurrentExecutable(home string) string {
-	dir := facethome.For(home)
-	if dir == "" {
-		return ""
-	}
-	name := "facet"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	path := filepath.Join(dir, "current", "bin", name)
-	if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
-		return path
-	}
-	return ""
-}
 
 type mode int
 
@@ -487,8 +452,8 @@ func (e *env) remove(req *request) int {
 
 // refresh re-applies every recorded wiring with this facet: the skills,
 // agent and MCP registration move to this version, exactly as `facet wire
-// <cli>` would install them. The installer runs it after every update and
-// rollback, so the Bundle in each CLI always matches the active Toolkit.
+// <cli>` would install them. The installer runs it after every upgrade, so
+// what each CLI holds always matches the installed facet.
 // A wiring made with --exe keeps its executable.
 func (e *env) refresh(req *request) int {
 	reg, err := LoadRegistry(e.registryPath())
@@ -573,7 +538,7 @@ func (e *env) temporaryExecutable() bool {
 		return false
 	}
 	rel, err := filepath.Rel(pathKey(tmp), pathKey(e.exe))
-	return err == nil && !strings.HasPrefix(rel, "..") && rel != "." && CurrentExecutable(e.home) == ""
+	return err == nil && !strings.HasPrefix(rel, "..") && rel != "."
 }
 
 // commandLine renders argv for people, quoting arguments with spaces.
