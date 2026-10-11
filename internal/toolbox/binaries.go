@@ -31,14 +31,25 @@ import (
 // place a fake runtime around a fake executable.
 var executablePath = os.Executable
 
-// runtimeRoot returns <runtime>, or "" when the executable cannot be located.
-func runtimeRoot() string {
+// Executable returns the running facet, resolved through links, or "" when it
+// cannot be located. An installed facet lives in its runtime, which upgrades
+// replace in place, so CLIs can register this path for good.
+func Executable() string {
 	exe, err := executablePath()
 	if err != nil || exe == "" {
 		return ""
 	}
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
+	}
+	return filepath.Clean(exe)
+}
+
+// runtimeRoot returns <runtime>, or "" when the executable cannot be located.
+func runtimeRoot() string {
+	exe := Executable()
+	if exe == "" {
+		return ""
 	}
 	return filepath.Dir(filepath.Dir(exe))
 }

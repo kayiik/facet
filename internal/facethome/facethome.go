@@ -1,9 +1,9 @@
-// Package facethome locates Facet's home folder: where the installer keeps
-// runtimes and the active one (current), and where facet wire keeps its
-// wiring record.
+// Package facethome locates Facet's home folder, where facet wire keeps its
+// wiring record. Programs and components are not kept there: they live in
+// the runtime around the facet executable.
 //
-// FACET_HOME moves it. The Facet App sets it for its own pinned Toolkit, so
-// that Toolkit never reads or writes the user-wide one beside it.
+// FACET_HOME moves it. The Facet App sets it for its own Toolkit, so that
+// Toolkit never reads or writes the user-wide record beside it.
 package facethome
 
 import (

@@ -1,17 +1,21 @@
 #!/bin/sh
-# Smoke test for installer/install.sh against two local releases built by
-# scripts/build-release.py: install core, add the App, verify, refuse a plain
-# install of a newer release, upgrade, refuse to remove a changed file, and
-# uninstall without a trace. Runs with HOME set to a fresh temporary folder.
+# Smoke test for install.sh against releases built by scripts/build-release.py:
+# install core, add the App, verify, refuse to remove a changed file, and
+# uninstall without a trace. With NEXT_DIR, a newer release, it also refuses a
+# plain install of that release and upgrades to it. Runs with HOME set to a
+# fresh temporary folder.
 #
-#   sh scripts/smoke-installer.sh RELEASE_DIR NEXT_DIR
+#   sh scripts/smoke-installer.sh [--installer FILE] RELEASE_DIR [NEXT_DIR]
 set -eu
-release=$1
-next=$2
 here=$(CDPATH= cd -P "$(dirname "$0")" && pwd -P)
-installer=$here/../installer/install.sh
+installer=$here/../install.sh
+if [ "${1:-}" = --installer ]; then
+    installer=$2
+    shift 2
+fi
+release=$1
+next=${2:-}
 version=$(awk -F '\t' '$1=="version" {print $2}' "$release/manifest.tsv")
-next_version=$(awk -F '\t' '$1=="version" {print $2}' "$next/manifest.tsv")
 # The installer refuses linked paths, and macOS's temporary folder is under
 # the /var link: use the physical path.
 HOME=$(CDPATH= cd -P "$(mktemp -d "${TMPDIR:-/tmp}/facet-smoke-home.XXXXXXXX")" && pwd -P)
@@ -41,14 +45,19 @@ install_facet --mode app --distribution-dir "$release"
 [ -x "$root/kernel/compa-kernel" ] || fail "no kernel"
 [ -e "$start" ] || fail "app mode made no Start entry"
 install_facet --verify
+upgraded=
 
-plan=$(sh "$installer" --upgrade --distribution-dir "$next" --dry-run)
-case "$plan" in *"Dry-run: upgrade Facet $next_version (core, app)"*) ;; *) fail "dry run: $plan" ;; esac
+if [ -n "$next" ]; then
+    next_version=$(awk -F '\t' '$1=="version" {print $2}' "$next/manifest.tsv")
+    plan=$(sh "$installer" --upgrade --distribution-dir "$next" --dry-run)
+    case "$plan" in *"Dry-run: upgrade Facet $next_version (core, app)"*) ;; *) fail "dry run: $plan" ;; esac
 
-expect_failure "Run with --upgrade" --distribution-dir "$next"
-install_facet --upgrade --distribution-dir "$next"
-[ "$("$HOME/.local/bin/facet" version)" = "facet v$next_version" ] || fail "upgraded facet version"
-install_facet --verify
+    expect_failure "Run with --upgrade" --distribution-dir "$next"
+    install_facet --upgrade --distribution-dir "$next"
+    [ "$("$HOME/.local/bin/facet" version)" = "facet v$next_version" ] || fail "upgraded facet version"
+    install_facet --verify
+    upgraded=", upgrade $version -> $next_version"
+fi
 
 cp "$root/LICENSE" "$HOME/license.saved"
 printf 'changed\n' >> "$root/LICENSE"
@@ -61,4 +70,4 @@ install_facet --uninstall
 [ ! -e "$HOME/.local/bin/facet" ] && [ ! -L "$HOME/.local/bin/facet" ] || fail "uninstall left the facet link"
 [ ! -e "$start" ] || fail "uninstall left the Start entry"
 rm -rf "$HOME"
-printf 'install.sh: core, App, verify, upgrade %s -> %s and uninstall passed\n' "$version" "$next_version"
+printf 'install.sh: core, App, verify%s and uninstall passed\n' "$upgraded"

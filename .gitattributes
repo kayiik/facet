@@ -15,4 +15,3 @@ fixtures/** -text
 plugins/** -text
 
 *.sh text eol=lf
-installer/*.tsv text eol=lf

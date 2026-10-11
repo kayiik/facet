@@ -1,7 +1,7 @@
-// Package doctor reports what a Facet installation can do: the active
-// runtime, the wirings, Facet 1.x leftovers, the media programs the tools
-// would run, the agentic CLIs on PATH, the provider credentials the tools
-// read, and every tool's readiness.
+// Package doctor reports what a Facet installation can do: the runtime the
+// running facet belongs to, the wirings, Facet 1.x leftovers, the media
+// programs the tools would run, the agentic CLIs on PATH, the provider
+// credentials the tools read, and every tool's readiness.
 //
 // It only reads. Programs are resolved exactly as the tools resolve them, so
 // the report can never disagree with what a tool would run; there is no
@@ -12,17 +12,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/kayiik/facet/internal/facethome"
 	"github.com/kayiik/facet/internal/toolbox"
 	"github.com/kayiik/facet/internal/wire"
 )
@@ -38,15 +38,16 @@ const (
 	StatusError    CheckStatus = "Error"
 )
 
-// FacetRuntimeCheck reports the running facet and the active runtime at
-// current in Facet's home folder, whose executable is what facet wire
-// registers.
+// FacetRuntimeCheck reports the running facet and its runtime: the folder
+// that holds bin/facet, where facet install puts the components and whose
+// facet facet wire registers. In a runtime Facet's installer made, its
+// receipt names the release and the products installed there.
 type FacetRuntimeCheck struct {
 	Running    string      `json:"running_version"`
 	Executable string      `json:"executable,omitempty"`
-	Current    string      `json:"current,omitempty"`
-	Target     string      `json:"current_target,omitempty"`
-	Version    string      `json:"current_version,omitempty"`
+	Runtime    string      `json:"runtime,omitempty"`
+	Installed  string      `json:"installed_version,omitempty"`
+	Products   []string    `json:"installed_products,omitempty"`
 	Status     CheckStatus `json:"status"`
 	Details    string      `json:"details,omitempty"`
 }
@@ -148,11 +149,11 @@ func Generate() *DoctorReport {
 		Tools:    make([]ToolCheck, 0),
 	}
 
-	// 0. Facet itself: the active runtime, the wirings, and 1.x leftovers.
+	// 0. Facet itself: its runtime, the wirings, and 1.x leftovers.
 	home, _ := os.UserHomeDir()
 	cwd, _ := os.Getwd()
 	running := toolbox.ProductVersion()
-	report.Facet = probeFacetRuntime(home, running)
+	report.Facet = probeFacetRuntime(running)
 	report.Wiring, report.WiringError = wiringChecks(running)
 	report.Legacy = legacyChecks(runtime.GOOS, cwd, home)
 
@@ -236,89 +237,58 @@ func toolCheck(tMap map[string]any) ToolCheck {
 	return ToolCheck{Name: name, Capability: capab, Configured: conf, MissingDeps: missing}
 }
 
-// facetVersionOf runs `<exe> version` with a hard timeout and returns the
-// reported version. Tests replace it.
-var facetVersionOf = func(exe string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, exe, "version")
-	cmd.WaitDelay = time.Second
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	if m := facetVersionPattern.FindSubmatch(out); m != nil {
-		return string(m[1])
-	}
-	return ""
-}
+// receiptName is the record Facet's installer keeps in the runtime it made.
+const receiptName = "install-receipt.tsv"
 
-var facetVersionPattern = regexp.MustCompile(`facet v(\S+)`)
-
-// versionFromRuntimeDir reads <version>-<os>-<arch>, the installer's
-// runtime directory name.
-func versionFromRuntimeDir(dir string) string {
-	parts := strings.Split(filepath.Base(dir), "-")
-	if len(parts) < 3 {
-		return ""
-	}
-	switch parts[len(parts)-2] {
-	case "windows", "linux", "darwin":
-	default:
-		return ""
-	}
-	switch parts[len(parts)-1] {
-	case "amd64", "arm64":
-	default:
-		return ""
-	}
-	return strings.Join(parts[:len(parts)-2], "-")
-}
-
-// probeFacetRuntime reports the running facet and the active runtime.
-func probeFacetRuntime(home, running string) FacetRuntimeCheck {
-	check := FacetRuntimeCheck{Running: running}
-	if exe, err := os.Executable(); err == nil {
-		check.Executable = exe
-	}
-	facetHome := facethome.For(home)
-	if facetHome == "" {
-		check.Status = StatusWarning
-		check.Details = "the home directory is unknown, so the active runtime cannot be checked; set " + facethome.EnvVar
+// probeFacetRuntime reports the running facet, its runtime, and what the
+// installer's receipt there records.
+func probeFacetRuntime(running string) FacetRuntimeCheck {
+	check := FacetRuntimeCheck{Running: running, Executable: toolbox.Executable(), Runtime: toolbox.RuntimeRoot()}
+	if check.Runtime == "" {
+		check.Status, check.Details = StatusWarning, "cannot locate the runtime folder of this facet"
 		return check
 	}
-	current := filepath.Join(facetHome, "current")
-	if _, err := os.Lstat(current); err != nil {
-		check.Status = StatusNotFound
-		check.Details = "no active runtime at " + current + "; facet wire registers the running executable instead"
-		return check
-	}
-	check.Current = current
-	check.Target = current
-	if target, err := filepath.EvalSymlinks(current); err == nil {
-		check.Target = target
-	}
-	exe := wire.CurrentExecutable(home)
-	if exe == "" {
-		check.Status = StatusWarning
-		check.Details = current + " has no bin/facet executable; reinstall Facet"
-		return check
-	}
-	check.Version = facetVersionOf(exe)
-	if check.Version == "" {
-		check.Version = versionFromRuntimeDir(check.Target)
-	}
+	version, products, err := readReceipt(filepath.Join(check.Runtime, receiptName))
 	switch {
-	case check.Version == "":
+	case errors.Is(err, fs.ErrNotExist):
+		check.Status = StatusNotFound
+		check.Details = "not installed by Facet's installer: a development build, or one another package manager installed"
+	case err != nil:
+		check.Status, check.Details = StatusWarning, err.Error()
+	case version != running:
+		check.Installed, check.Products = version, products
 		check.Status = StatusWarning
-		check.Details = "could not determine the version of " + exe
-	case check.Version != running:
-		check.Status = StatusWarning
-		check.Details = fmt.Sprintf("the active runtime is facet v%s, but this is facet v%s", check.Version, running)
+		check.Details = fmt.Sprintf("the installer installed Facet %s here, but this is facet v%s; check the installation with the installer's -Verify (--verify)", version, running)
 	default:
+		check.Installed, check.Products = version, products
 		check.Status = StatusOK
 	}
 	return check
+}
+
+// readReceipt returns the release and the products the installer's receipt
+// records.
+func readReceipt(path string) (version string, products []string, err error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, err
+	}
+	format := ""
+	for _, line := range strings.Split(string(data), "\n") {
+		key, value, _ := strings.Cut(strings.TrimSuffix(line, "\r"), "\t")
+		switch key {
+		case "format":
+			format = value
+		case "version":
+			version = value
+		case "product":
+			products = append(products, value)
+		}
+	}
+	if format != "facet-install-v1" || version == "" {
+		return "", nil, fmt.Errorf("%s is not an installation receipt this facet can read", path)
+	}
+	return version, products, nil
 }
 
 // wiringChecks summarizes the wirings recorded in wiring.json.
@@ -442,17 +412,14 @@ func formatDoctorReport(report *DoctorReport, w io.Writer) {
 			symbol = "-"
 		}
 	}
-	active := string(report.Facet.Status)
-	if report.Facet.Current != "" {
-		active = report.Facet.Current
-		if report.Facet.Target != "" && report.Facet.Target != report.Facet.Current {
-			active += " -> " + report.Facet.Target
-		}
-		if report.Facet.Version != "" {
-			active += " (facet v" + report.Facet.Version + ")"
-		}
+	place := report.Facet.Runtime
+	if place == "" {
+		place = string(report.Facet.Status)
 	}
-	fmt.Fprintf(w, "  %s %-18s : %s\n", symbol, "Active runtime", active)
+	if report.Facet.Installed != "" {
+		place += fmt.Sprintf(" (installed: Facet %s, %s)", report.Facet.Installed, strings.Join(report.Facet.Products, " and "))
+	}
+	fmt.Fprintf(w, "  %s %-18s : %s\n", symbol, "Runtime", place)
 	if report.Facet.Details != "" {
 		fmt.Fprintf(w, "    %s\n", report.Facet.Details)
 	}

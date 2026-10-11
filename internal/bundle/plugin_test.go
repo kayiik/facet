@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -274,26 +275,22 @@ func TestCommittedPluginsMatchThisFacet(t *testing.T) {
 	}
 }
 
-// The marketplaces in the repository serve the plugins of the release the
-// website one-liners install: each entry pins the release tag the installer
-// pin names, so the plugins and the Toolkit move together and a marketplace
-// never points at an unpublished release.
+// The marketplaces in the repository serve the plugins of one published
+// release: each entry pins the same release tag, which moves only after that
+// release is published, so the plugins and the Toolkit move together and a
+// marketplace never points at an unpublished release. Between releases
+// package.json names the next one, so the pin is never newer than it.
 func TestMarketplacesServeThePinnedRelease(t *testing.T) {
 	repo := filepath.Join("..", "..")
-	read := func(rel string) string {
-		t.Helper()
-		data, err := os.ReadFile(filepath.Join(repo, filepath.FromSlash(rel)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(data)
+	claude := readJSONFile(t, filepath.Join(repo, ".claude-plugin", "marketplace.json"))
+	meta, _ := claude["metadata"].(map[string]any)
+	pinned, _ := meta["version"].(string)
+	next, _ := readJSONFile(t, filepath.Join(repo, "package.json"))["version"].(string)
+	next, _, _ = strings.Cut(next, "-") // a prerelease of the next release
+	if !releaseVersion.MatchString(pinned) || !releaseVersion.MatchString(next) || !notNewer(pinned, next) {
+		t.Fatalf("the marketplaces pin release %q; package.json names %q, and the pin must not be newer", pinned, next)
 	}
-	ps := regexp.MustCompile(`(?m)^\s*\$version = '([^']+)'`).FindStringSubmatch(read("docs/install.ps1"))
-	sh := regexp.MustCompile(`(?m)^\s*version=(\S+)$`).FindStringSubmatch(read("docs/install.sh"))
-	if ps == nil || sh == nil || ps[1] != sh[1] {
-		t.Fatalf("the website one-liners pin different releases: %v %v", ps, sh)
-	}
-	pinned, tag := ps[1], "v"+ps[1]
+	tag := "v" + pinned
 	gitURL := PluginRepository + ".git"
 	repoName := strings.TrimPrefix(PluginRepository, "https://github.com/")
 
@@ -343,4 +340,20 @@ func TestMarketplacesServeThePinnedRelease(t *testing.T) {
 			t.Errorf("%s: %s holds no %s plugin: %v", want.file, want.source["path"], want.target, err)
 		}
 	}
+}
+
+var releaseVersion = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+
+// notNewer reports whether release version a is not newer than b; both are
+// MAJOR.MINOR.PATCH.
+func notNewer(a, b string) bool {
+	x, y := releaseVersion.FindStringSubmatch(a), releaseVersion.FindStringSubmatch(b)
+	for i := 1; i < 4; i++ {
+		m, _ := strconv.Atoi(x[i])
+		n, _ := strconv.Atoi(y[i])
+		if m != n {
+			return m < n
+		}
+	}
+	return true
 }

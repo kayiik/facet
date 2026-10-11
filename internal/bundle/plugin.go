@@ -37,10 +37,10 @@ import (
 //	         in. Copilot asks before every tool that is not read-only.
 //
 // The registration runs `facet mcp` with facet from PATH. A plugin is a static
-// file: it cannot know the person's home folder or FACET_HOME, and the
-// installers put <Facet home>/current/bin on PATH. When facet is missing the
-// server cannot start; the facet skill then has the agent ask the person to
-// install the Toolkit.
+// file: it cannot know where Facet is installed, and the installers put facet
+// on PATH (the programs folder's bin on Windows, ~/.local/bin on macOS and
+// Linux). When facet is missing the server cannot start; the facet skill then
+// has the agent ask the person to install the Toolkit.
 
 const (
 	// PluginName is the plugin's name in every format and marketplace.

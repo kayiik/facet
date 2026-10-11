@@ -4,7 +4,7 @@
 #
 #   build/dev/bin/facet.exe
 #   build/dev/dependencies/remotion-composer   (a junction to this checkout's composer)
-#   build/dev/dependencies/hyperframes         (the pinned HyperFrames)
+#   build/dev/dependencies/hyperframes         (the pinned HyperFrames, from facet install)
 #
 # so the dev build finds its composer and HyperFrames the way an installed one
 # does, with no environment variables. Then it wires the dev build into your
@@ -53,19 +53,12 @@ if (-not (Test-Path $composerLink)) {
     New-Item -ItemType Junction -Path $composerLink -Target $composer | Out-Null
 }
 
-$hyperDir = Join-Path $deps "hyperframes"
-$hyperEntry = Join-Path $hyperDir "node_modules/hyperframes/bin/hyperframes.mjs"
+$hyperEntry = Join-Path $deps "hyperframes/node_modules/hyperframes/bin/hyperframes.mjs"
 if (-not $SkipHyperFrames -and -not (Test-Path $hyperEntry)) {
-    $pin = (Get-Content (Join-Path $repo "installer/manifest.tsv") | Where-Object { $_ -match "^component\thyperframes\t" } | ForEach-Object { ($_ -split "`t")[2] } | Select-Object -First 1)
-    if (-not $pin) { throw "no hyperframes pin in installer/manifest.tsv" }
-    Write-Host "facet: installing HyperFrames $pin"
-    New-Item -ItemType Directory -Force $hyperDir | Out-Null
-    Push-Location $hyperDir
-    try {
-        if (-not (Test-Path "package.json")) { '{"private":true}' | Set-Content -Encoding utf8NoBOM package.json }
-        npm install --no-audit --no-fund "hyperframes@$pin"
-        if ($LASTEXITCODE -ne 0) { throw "npm install hyperframes failed" }
-    } finally { Pop-Location }
+    # The dev build installs HyperFrames beside itself, as an installed facet does.
+    Write-Host "facet: installing HyperFrames"
+    & $exe install hyperframes
+    if ($LASTEXITCODE -ne 0) { throw "facet install hyperframes failed" }
 }
 
 # An explicit override would win over the layout above and hide it.

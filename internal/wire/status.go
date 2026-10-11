@@ -37,8 +37,8 @@ type WiringStatus struct {
 	RulesNote  string `json:"rules_note,omitempty"`
 	// Stale is set when another Facet version wired it.
 	Stale bool `json:"stale,omitempty"`
-	// ExecutableChanged is set when the stable executable is no longer the
-	// registered one; ExecutableMissing when the registered one is gone.
+	// ExecutableChanged is set when the MCP server runs another facet than
+	// this one; ExecutableMissing when the registered one is gone.
 	ExecutableChanged bool `json:"executable_changed,omitempty"`
 	ExecutableMissing bool `json:"executable_missing,omitempty"`
 	Pending           bool `json:"pending,omitempty"`
@@ -101,7 +101,7 @@ func (s WiringStatus) Problems(running string) []string {
 	if s.ExecutableMissing {
 		out = append(out, fmt.Sprintf("the registered executable %s no longer exists", s.Executable))
 	} else if s.ExecutableChanged {
-		out = append(out, fmt.Sprintf("the MCP server runs %s, but the stable executable is now another one", s.Executable))
+		out = append(out, fmt.Sprintf("the MCP server runs %s, not this facet", s.Executable))
 	}
 	if s.Pending {
 		out = append(out, "a previous facet wire run did not finish")

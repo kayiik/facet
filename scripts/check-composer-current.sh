@@ -2,21 +2,22 @@
 # Report Remotion composer sources in an installed Facet runtime that no
 # longer match this repository.
 #
-# A runtime's composer is a COPY made when the release archive was packaged,
-# and it is what the installed `facet` renders with. Installed composers have
-# drifted months behind the repository before (a stale padding rule, a
-# composer that ignored duration_seconds), so compare the bytes. The guidance
-# (skills, packs, agents) is compiled into the facet binary itself; a CLI's
-# copies of it are checked by `facet wire --status`.
+# A runtime's composer is a COPY that `facet install remotion` wrote from the
+# composer compiled into that facet, and it is what the installed `facet`
+# renders with. Installed composers have drifted months behind the
+# repository before (a stale padding rule, a composer that ignored
+# duration_seconds), so compare the bytes. The guidance (the guide, agents and
+# pipelines) is compiled into the facet binary itself; a CLI's copies of it
+# are checked by `facet wire --status`.
 #
 # Exits non-zero when anything is missing, stale or left over, so this can gate
 # a release rather than being something a person has to remember to look at.
 #
 # Usage: scripts/check-composer-current.sh [COMPOSER_DIR]
 # An explicit argument wins, and naming a directory that does not exist is an
-# error. Otherwise the active runtime's composer:
-# <Facet home>/current/dependencies/remotion-composer, where the Facet home is
-# $FACET_HOME or ~/.facet; only that default may be absent (nothing installed).
+# error. Otherwise the composer of the runtime the installer made:
+# ~/.local/lib/facet/dependencies/remotion-composer; only that default may be
+# absent (nothing installed).
 set -eu
 
 if [ -n "${1:-}" ]; then
@@ -26,7 +27,7 @@ if [ -n "${1:-}" ]; then
   fi
   composer=$(cd "$1" && pwd)
 else
-  composer=${FACET_HOME:-$HOME/.facet}/current/dependencies/remotion-composer
+  composer=$HOME/.local/lib/facet/dependencies/remotion-composer
   if [ ! -d "$composer" ]; then
     echo "no installed composer at $composer; nothing to compare"
     exit 0
@@ -72,7 +73,7 @@ if [ "$status" -eq 0 ]; then
 else
   echo
   echo "the installed facet renders with its own copy, not this repository."
-  echo "refresh: package a release archive (scripts/package-release.py) and reinstall it with"
-  echo "  install.sh --archive <zip> --checksums <file>, or install the matching published release."
+  echo "refresh: upgrade it to a release built from this repository (scripts/build-release.py,"
+  echo "  then install.sh --upgrade --distribution-dir DIR), and run facet install --force remotion."
 fi
 exit "$status"

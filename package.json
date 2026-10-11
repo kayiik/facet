@@ -15,12 +15,8 @@
   },
   "scripts": {
     "test:launchers": "node --test bin/launchers.test.js",
-    "test:installer": "node --test scripts/installer-selection.test.mjs",
     "test:notices": "python -m unittest discover -s scripts -p test_generate_notices.py",
-    "doctor": "node bin/facet-cli.js doctor",
-    "check-pr": "release-harness check-pr",
-    "run-local": "release-harness run-local",
-    "clean": "release-harness clean"
+    "doctor": "node bin/facet-cli.js doctor"
   },
   "keywords": [
     "video",
@@ -42,7 +38,6 @@
     "node": ">=18"
   },
   "devDependencies": {
-    "@xibodev/release-harness": "1.2.0",
     "playwright": "1.63.0"
   }
 }

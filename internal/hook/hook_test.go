@@ -52,22 +52,22 @@ func TestEveryPaidToolAsksThroughMCPAndTheShell(t *testing.T) {
 
 func TestPaidInCommand(t *testing.T) {
 	for command, want := range map[string][]string{
-		"facet tools run sora_video --input request.json":                                         {"sora_video"},
-		"cd project && facet tools run kling_video --input '{\"prompt\":\"x\"}'":                  {"kling_video"},
-		"facet tools run veo --input r.json":                                                      nil,            // no aliases: an unknown tool runs nothing
-		"facet tools run SORA_VIDEO --input r.json":                                               {"sora_video"}, // any case
-		"facet tools run 'elevenlabs_tts' --input r.json":                                         {"elevenlabs_tts"},
-		"/home/a/.facet/current/bin/facet tools run openai_image --input r.json":                  {"openai_image"},
-		`& "C:\Users\test user\.facet\current\bin\facet.exe" tools run flux_image --input r.json`: {"flux_image"},
-		"npx @kayiik/facet tools run openai_tts --input r.json":                                   {"openai_tts"},
-		"npx @kayiik/facet@latest tools run openai_tts --input r.json":                            {"openai_tts"},
-		"facet tools \\\n  run sora_video --input r.json":                                         {"sora_video"}, // sh continuation
-		"facet tools `\r\n  run sora_video --input r.json":                                        {"sora_video"}, // PowerShell continuation
-		"facet tools run sora_video --input a.json; facet tools run kling_video --input b":        {"kling_video", "sora_video"},
-		"facet tools run media_probe --input r.json":                                              nil,
-		"facet tools estimate sora_video --input r.json":                                          nil, // an estimate charges nothing
-		"facet tools describe sora_video":                                                         nil,
-		"myfacet tools run sora_video --input r.json":                                             nil,
+		"facet tools run sora_video --input request.json":                                                       {"sora_video"},
+		"cd project && facet tools run kling_video --input '{\"prompt\":\"x\"}'":                                {"kling_video"},
+		"facet tools run veo --input r.json":                                                                    nil,            // no aliases: an unknown tool runs nothing
+		"facet tools run SORA_VIDEO --input r.json":                                                             {"sora_video"}, // any case
+		"facet tools run 'elevenlabs_tts' --input r.json":                                                       {"elevenlabs_tts"},
+		"/home/a/.local/bin/facet tools run openai_image --input r.json":                                        {"openai_image"},
+		`& "C:\Users\test user\AppData\Local\Programs\Facet\bin\facet.exe" tools run flux_image --input r.json`: {"flux_image"},
+		"npx @kayiik/facet tools run openai_tts --input r.json":                                                 {"openai_tts"},
+		"npx @kayiik/facet@latest tools run openai_tts --input r.json":                                          {"openai_tts"},
+		"facet tools \\\n  run sora_video --input r.json":                                                       {"sora_video"}, // sh continuation
+		"facet tools `\r\n  run sora_video --input r.json":                                                      {"sora_video"}, // PowerShell continuation
+		"facet tools run sora_video --input a.json; facet tools run kling_video --input b":                      {"kling_video", "sora_video"},
+		"facet tools run media_probe --input r.json":                                                            nil,
+		"facet tools estimate sora_video --input r.json":                                                        nil, // an estimate charges nothing
+		"facet tools describe sora_video":                                                                       nil,
+		"myfacet tools run sora_video --input r.json":                                                           nil,
 		"facet mcp": nil,
 		"":          nil,
 	} {
