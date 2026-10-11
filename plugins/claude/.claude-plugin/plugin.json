@@ -1,6 +1,6 @@
 {
   "name": "facet",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Create, edit, render, and review video with Facet's production skills and MCP tools. Needs the Facet Toolkit: https://kayiik.github.io/facet/",
   "author": {
     "name": "Facet Contributors",

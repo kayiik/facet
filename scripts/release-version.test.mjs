@@ -7,8 +7,8 @@ const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const version = JSON.parse(read('package.json')).version;
 const escaped = version.replaceAll('.', '\\.');
 
-test('package.json names the 0.0.1 release', () => {
-  assert.equal(version, '0.0.1');
+test('package.json names the 0.0.2 release', () => {
+  assert.equal(version, '0.0.2');
 });
 
 test('shipping version surfaces identify the package.json release', () => {

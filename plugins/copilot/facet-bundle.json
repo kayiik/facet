@@ -1,7 +1,7 @@
 {
   "schema": "kayiik.facet.bundle/v2",
   "capability_id": "kayiik.facet",
-  "facet_version": "0.0.1",
+  "facet_version": "0.0.2",
   "adapter_version": "3",
   "target": "copilot",
   "scope": "plugin",
@@ -84,7 +84,7 @@
     {
       "path": "plugin.json",
       "bytes": 793,
-      "digest": "sha256:1cbafd96895f4b20be596b173c8fe6e2a98fc3d99a69c108bacb3ef486b9bfac",
+      "digest": "sha256:5a30cb942f00c8022ea3dd120ea305c9edc79244903070f6f39bedb159d6b29e",
       "kind": "plugin"
     },
     {
@@ -94,5 +94,5 @@
       "kind": "skill"
     }
   ],
-  "bundle_digest": "sha256:c01b71867bbc8d948edf2a33abfa3c013a31ee1657027c8dae360e168da70636"
+  "bundle_digest": "sha256:55fde351f600e85b3a222d58871a3d4f088f8f0c7232073e797ab0e2c8e3458e"
 }

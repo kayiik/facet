@@ -1,7 +1,7 @@
 {
   "schema": "kayiik.facet.bundle/v2",
   "capability_id": "kayiik.facet",
-  "facet_version": "0.0.1",
+  "facet_version": "0.0.2",
   "adapter_version": "3",
   "target": "claude",
   "scope": "plugin",
@@ -54,7 +54,7 @@
     {
       "path": ".claude-plugin/plugin.json",
       "bytes": 569,
-      "digest": "sha256:aa073fc92bba64f9c242bd89f7e14a840ca95788c707a7dd234b8a25f26656d2",
+      "digest": "sha256:9ccdec4bbb904c1c51021632fefb6af9f158e8d21990e067244717e795dbf00f",
       "kind": "plugin"
     },
     {
@@ -94,5 +94,5 @@
       "kind": "skill"
     }
   ],
-  "bundle_digest": "sha256:9d1c64284e8bde56a16c4f738ecfa4c397918be92cf5b81f0532dd4bfa0fdaa3"
+  "bundle_digest": "sha256:2a5a8debd24569633e4d7d1f6d75a27b0c50b4afb324e835a1a5d29767742bad"
 }

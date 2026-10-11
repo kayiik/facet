@@ -1,7 +1,7 @@
 {
   "schema": "kayiik.facet.bundle/v2",
   "capability_id": "kayiik.facet",
-  "facet_version": "0.0.1",
+  "facet_version": "0.0.2",
   "adapter_version": "3",
   "target": "codex",
   "scope": "plugin",
@@ -54,7 +54,7 @@
     {
       "path": ".codex-plugin/plugin.json",
       "bytes": 1437,
-      "digest": "sha256:e778f80c8a07ad0818d813cf0f99d0b01eefed940e748eb35541f43a7c704ba6",
+      "digest": "sha256:57422a9d862e2c486127c52e448636b6b82fbbdf5ce1de67acf4c0ab167b432d",
       "kind": "plugin"
     },
     {
@@ -70,5 +70,5 @@
       "kind": "skill"
     }
   ],
-  "bundle_digest": "sha256:c55d42b623a7aa72828e018571cfb9e54e5fa8c1bca3a0b2862105efbd3647ce"
+  "bundle_digest": "sha256:8fd478cb732d601dd7f0c9d8f45d2cb92c34b2a83bd1d77680a91a976f7c3baf"
 }
