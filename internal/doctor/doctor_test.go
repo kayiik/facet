@@ -168,6 +168,8 @@ func TestDoctorReportsTheRuntime(t *testing.T) {
 	exe := filepath.Join(place, "bin", name)
 	writeFixture(t, exe, "fake")
 	t.Cleanup(toolbox.UseExecutable(exe))
+	// The doctor reports paths with their links and Windows short names resolved.
+	exe, place = resolved(t, exe), resolved(t, place)
 
 	got := probeFacetRuntime("2.0.0")
 	if got.Runtime != place || got.Executable != exe || got.Status != StatusNotFound || !strings.Contains(got.Details, "not installed by Facet's installer") {
@@ -207,9 +209,19 @@ func TestDoctorRuntimeIgnoresFacetHome(t *testing.T) {
 	writeFixture(t, exe, "fake")
 	t.Cleanup(toolbox.UseExecutable(exe))
 	t.Setenv(facethome.EnvVar, filepath.Join(t.TempDir(), "app-facet"))
-	if got := probeFacetRuntime("2.0.0"); got.Runtime != place {
+	if got := probeFacetRuntime("2.0.0"); got.Runtime != resolved(t, place) {
 		t.Fatalf("FACET_HOME moved the runtime: %+v", got)
 	}
+}
+
+// resolved returns path with its links and Windows short names resolved.
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return real
 }
 
 func TestDoctorNamesV1IntegrationsAndTheirCleanup(t *testing.T) {

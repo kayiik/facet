@@ -236,9 +236,22 @@ func newSandbox(t *testing.T, clis ...string) *sandbox {
 	if err := os.WriteFile(s.exe, []byte("installed facet"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// facet wire registers the running facet with its links resolved, which on
+	// Windows also expands a short (8.3) temporary folder such as RUNNER~1.
+	s.exe = resolved(t, s.exe)
 	t.Cleanup(toolbox.UseExecutable(s.exe))
 	t.Chdir(s.project)
 	return s
+}
+
+// resolved returns path with its links and Windows short names resolved.
+func resolved(t *testing.T, path string) string {
+	t.Helper()
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return real
 }
 
 func (s *sandbox) installFake(t *testing.T, cli string) {
@@ -937,6 +950,7 @@ func TestRewireFollowsTheRunningExecutable(t *testing.T) {
 	if err := os.WriteFile(other, []byte("another facet"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	other = resolved(t, other)
 	t.Cleanup(toolbox.UseExecutable(other))
 	if out := mustRun(t, "--status"); !strings.Contains(out, "the MCP server runs "+s.exe+", not this facet") {
 		t.Errorf("status does not report the other executable:\n%s", out)
