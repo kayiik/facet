@@ -249,11 +249,30 @@ export async function journey(evidence, { home = os.homedir(), release = '/relea
     };
     save('opencode.log', Object.values(results).map(result => result.log).join('\n\n'));
     for (const [what, result] of Object.entries(results)) assert.equal(result.status, 0, `opencode ${what} exited ${result.status ?? result.signal}`);
-    assert.match(results['debug config'].text, /"facet"/, 'OpenCode\'s resolved configuration has no facet server');
-    assert.match(results['debug agent facet'].text, /primary/, 'OpenCode does not load facet as a primary agent');
-    assert.match(results['debug skill'].text, /\bfacet\b/, 'OpenCode does not list the facet skill');
-    assert.match(results['mcp list'].text, /facet[^\n]*connected/i, 'OpenCode does not connect to the facet MCP server');
-    return { opencode: results['--version'].stdout.trim() };
+    const json = what => {
+      try { return JSON.parse(results[what].stdout); } catch { return assert.fail(`opencode ${what} printed no JSON`); }
+    };
+    // This machine's person is called facet too, so match fields, not words.
+    const config = json('debug config');
+    assert.deepEqual(config.mcp?.facet?.command, [facet, 'mcp'], 'OpenCode\'s configuration does not run the installed facet');
+    assert.equal(config.mcp.facet.enabled, true, 'OpenCode\'s facet MCP server is disabled');
+    assert.equal(config.agent?.facet?.mode, 'primary', 'OpenCode does not offer facet as a primary agent');
+    for (const role of ['facet-researcher', 'facet-critic', 'facet-reference-analyst']) {
+      assert.equal(config.agent?.[role]?.mode, 'subagent', `OpenCode does not load ${role} as a subagent`);
+    }
+    // OpenCode asks before every tool that may charge, as facet lists them.
+    const listed = tool(['tools', 'list']);
+    const paid = (listed.envelope?.result?.tools ?? []).filter(entry => entry.runtime === 'paid').map(entry => `facet_${entry.name}`).sort();
+    assert.ok(paid.length > 0, 'facet tools list names no paid tool');
+    assert.deepEqual(Object.keys(config.permission ?? {}).filter(name => config.permission[name] === 'ask').sort(), paid, 'OpenCode does not ask before exactly the paid tools');
+    const agent = json('debug agent facet');
+    assert.equal(agent.name, 'facet');
+    assert.equal(agent.mode, 'primary', 'OpenCode resolves the facet agent to another mode');
+    const skill = json('debug skill').find(entry => entry.name === 'facet');
+    assert.equal(skill?.location, path.join(home, '.config', 'opencode', 'skills', 'facet', 'SKILL.md'), 'OpenCode does not load the facet skill that facet wire installed');
+    const servers = results['mcp list'].text.replace(/\x1b\[[0-9;]*m/g, '');
+    assert.match(servers, /\bfacet\s+connected\b/, 'OpenCode does not connect to the facet MCP server');
+    return { opencode: results['--version'].stdout.trim(), paid_tools_asked: paid.length };
   });
 
   await check('facet-doctor', () => {
