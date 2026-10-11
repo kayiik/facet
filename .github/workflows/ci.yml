@@ -160,12 +160,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Build two releases for windows/amd64
+      - name: Build two releases for windows/amd64, this version and the next
         shell: pwsh
         run: |
           python scripts/build-release.py --out "$env:RUNNER_TEMP\release" --downloads "$env:RUNNER_TEMP\compa" --targets windows/amd64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/build-release.py --out "$env:RUNNER_TEMP\next" --downloads "$env:RUNNER_TEMP\compa" --targets windows/amd64 --version 0.0.2
+          $next = python scripts/next-version.py
+          python scripts/build-release.py --out "$env:RUNNER_TEMP\next" --downloads "$env:RUNNER_TEMP\compa" --targets windows/amd64 --version $next
       - name: Install, add the App, verify, upgrade and uninstall (PowerShell 7)
         shell: pwsh
         run: ./scripts/smoke-installer.ps1 -Release "$env:RUNNER_TEMP\release" -Next "$env:RUNNER_TEMP\next"
@@ -195,10 +196,10 @@ jobs:
           python-version: '3.12'
       - name: Installer syntax
         run: sh -n install.sh
-      - name: Build two releases for this platform
+      - name: Build two releases for this platform, this version and the next
         run: |
           target=$(python -c 'import platform; print({"Linux": "linux", "Darwin": "darwin"}[platform.system()] + "/" + {"x86_64": "amd64", "arm64": "arm64", "aarch64": "arm64"}[platform.machine()])')
           python scripts/build-release.py --out "$RUNNER_TEMP/release" --downloads "$RUNNER_TEMP/compa" --targets "$target"
-          python scripts/build-release.py --out "$RUNNER_TEMP/next" --downloads "$RUNNER_TEMP/compa" --targets "$target" --version 0.0.2
+          python scripts/build-release.py --out "$RUNNER_TEMP/next" --downloads "$RUNNER_TEMP/compa" --targets "$target" --version "$(python scripts/next-version.py)"
       - name: Install, add the App, verify, upgrade and uninstall
         run: sh scripts/smoke-installer.sh "$RUNNER_TEMP/release" "$RUNNER_TEMP/next"

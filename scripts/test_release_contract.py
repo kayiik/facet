@@ -1,4 +1,5 @@
 """Tests for the release contract both installers rely on."""
+import importlib.util
 import sys
 import unittest
 from pathlib import Path
@@ -72,6 +73,15 @@ class ReleaseContractTest(unittest.TestCase):
             self.assertRegex(archive_digest, rc.HASH)
             self.assertRegex(kernel_digest, rc.HASH)
             self.assertEqual(rc.compa_members(target)[0][1], "kernel/compa-kernel" + rc.exe(target))
+
+    def test_next_version_for_the_upgrade_tests(self):
+        spec = importlib.util.spec_from_file_location("next_version", Path(__file__).resolve().parent / "next-version.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for version, following in (("0.0.2", "0.0.3"), ("1.9.9", "1.9.10"), ("0.1.0-rc.1", "0.1.1")):
+            self.assertEqual(module.next_version(version), following)
+        with self.assertRaises(ValueError):
+            module.next_version("v0.0.2")
 
 
 if __name__ == "__main__":
