@@ -14,8 +14,8 @@
     </g>
   </g>
   <text x="482" y="272" fill="#0F172A" font-family="Space Grotesk, Inter, ui-sans-serif, system-ui, sans-serif" font-size="116" font-weight="700" letter-spacing="-4"><tspan>facet</tspan><tspan fill="#D92D48">.</tspan></text>
-  <text x="490" y="352" fill="#475569" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="500">Video production tools and guidance</text>
-  <text x="490" y="397" fill="#475569" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="500">for your AI coding agent, with a local Studio.</text>
+  <text x="490" y="352" fill="#475569" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="500">A video studio for the agent</text>
+  <text x="490" y="397" fill="#475569" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="500">you already use, or its own App.</text>
   <rect x="490" y="456" width="72" height="8" rx="4" fill="#F36C7A"/>
   <rect x="574" y="456" width="72" height="8" rx="4" fill="#10B981"/>
   <rect x="658" y="456" width="72" height="8" rx="4" fill="#D92D48"/>

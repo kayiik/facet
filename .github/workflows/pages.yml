@@ -1,0 +1,73 @@
+name: Pages
+
+# The website, https://kayiik.github.io/facet/: site/ from main with the
+# installers of a published stable release (scripts/stage-site.py). Runs when
+# a release is published, and by hand (on main) to publish a change to site/
+# without a release. Not on push: the page must never offer installers
+# before their release is published.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: A published stable release tag (empty for the latest)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish the website
+    if: github.event_name != 'release' || (!github.event.release.prerelease && !github.event.release.draft)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Resolve the published stable release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ -n "$REQUESTED_TAG" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$REQUESTED_TAG" > "$RUNNER_TEMP/site-release.json"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/releases/latest" > "$RUNNER_TEMP/site-release.json"
+          fi
+          python -c 'import json,os,re; r=json.load(open(os.environ["RUNNER_TEMP"]+"/site-release.json")); assert not r["draft"] and not r["prerelease"], "not a published stable release"; assert re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", r["tag_name"]); open(os.environ["GITHUB_OUTPUT"],"a").write("tag="+r["tag_name"]+"\n")'
+      # The page comes from main; stage-site.py checks that main contains the release.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/configure-pages@v5
+      - name: Stage the page with the release's verified installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern install.ps1 --pattern install.sh --pattern SHA256SUMS --pattern build-manifest.json \
+            --dir "$RUNNER_TEMP/site-release"
+          python scripts/stage-site.py --release-dir "$RUNNER_TEMP/site-release" --out "$RUNNER_TEMP/site" --tag "$TAG"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+      - uses: actions/deploy-pages@v4
+        id: deployment

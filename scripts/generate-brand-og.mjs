@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourcePath = path.join(root, "brand", "og", "og-default.svg");
 const outputPath = path.join(root, "brand", "og", "og-default.png");
-const projectionPath = path.join(root, "docs", "og-default.png");
+const projectionPath = path.join(root, "site", "og-default.png");
 const checkOnly = process.argv.includes("--check");
 
 const source = await readFile(sourcePath);
@@ -52,10 +52,10 @@ assert.equal(png.readUInt32BE(20), 630, "PNG height must be 630 pixels");
 
 if (checkOnly) {
   assert.deepEqual(await readFile(outputPath), png, "brand PNG is not current");
-  assert.deepEqual(await readFile(projectionPath), png, "docs PNG is not current");
+  assert.deepEqual(await readFile(projectionPath), png, "site PNG is not current");
   console.log("Brand OG PNG is current (1200x630).");
 } else {
   await writeFile(outputPath, png);
   await copyFile(outputPath, projectionPath);
-  console.log("Generated brand/og/og-default.png and docs/og-default.png (1200x630).");
+  console.log("Generated brand/og/og-default.png and site/og-default.png (1200x630).");
 }
