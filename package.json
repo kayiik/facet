@@ -1,6 +1,6 @@
 {
   "name": "@kayiik/facet",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Agent-first video production tools and guidance for agentic CLIs",
   "bin": {
     "facet": "bin/facet-cli.js"

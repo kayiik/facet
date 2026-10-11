@@ -22,7 +22,7 @@ import (
 
 // Version is the Facet release version. Release builds set it with
 // -ldflags "-X main.Version=<version>"; it is the only version source.
-var Version = "0.0.1-dev"
+var Version = "0.0.2-dev"
 
 func printUsage(w io.Writer) {
 	fmt.Fprintf(w, `Facet - a video production studio for agentic CLIs

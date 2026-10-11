@@ -38,7 +38,7 @@ import (
 )
 
 // Version is the App's version; release builds set it with -ldflags.
-var Version = "0.0.1-dev"
+var Version = "0.0.2-dev"
 
 // agentIdentity is the agent's AGENT.md.
 const agentIdentity = `---
