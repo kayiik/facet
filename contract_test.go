@@ -66,7 +66,7 @@ func TestTrackedTextContainsNoPersonalWindowsUserPaths(t *testing.T) {
 
 func TestActiveProductDocsDescribeGuidanceNotWorkflowContracts(t *testing.T) {
 	files := []string{
-		"docs/index.html",
+		"site/index.html",
 		"internal/toolbox/productmodel_test.go",
 	}
 	banned := []*regexp.Regexp{

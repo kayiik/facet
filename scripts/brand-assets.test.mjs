@@ -9,10 +9,9 @@ const read = (relativePath) => readFile(path.join(root, relativePath));
 const readText = async (relativePath) => (await read(relativePath)).toString("utf8");
 
 const siteProjections = {
-  "docs/favicon.svg": "icons/favicon.svg",
-  "docs/logo-mark.svg": "logos/mark.svg",
-  "docs/og-default.svg": "og/og-default.svg",
-  "docs/og-default.png": "og/og-default.png",
+  "site/favicon.svg": "icons/favicon.svg",
+  "site/logo-mark.svg": "logos/mark.svg",
+  "site/og-default.png": "og/og-default.png",
 };
 
 const markBearingSvgs = [
@@ -27,9 +26,8 @@ const markBearingSvgs = [
   "brand/icons/icon-192.svg",
   "brand/icons/icon-512.svg",
   "brand/og/og-default.svg",
-  "docs/favicon.svg",
-  "docs/logo-mark.svg",
-  "docs/og-default.svg",
+  "site/favicon.svg",
+  "site/logo-mark.svg",
 ];
 
 const fullColorSvgs = markBearingSvgs.filter(
@@ -59,7 +57,7 @@ test("site projections are byte-identical to their canonical assets", async () =
 test("social PNGs are exactly 1200x630", async () => {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-  for (const relativePath of ["brand/og/og-default.png", "docs/og-default.png"]) {
+  for (const relativePath of ["brand/og/og-default.png", "site/og-default.png"]) {
     const png = await read(relativePath);
     assert.deepEqual(png.subarray(0, 8), signature, `${relativePath} is not a PNG`);
     assert.equal(png.toString("ascii", 12, 16), "IHDR", `${relativePath} has no IHDR`);
@@ -96,7 +94,7 @@ test("full-color marks keep the approved signature colors", async () => {
 });
 
 test("homepage social metadata uses the PNG projection", async () => {
-  const html = await readText("docs/index.html");
+  const html = await readText("site/index.html");
   assert.ok(html.includes('<link rel="canonical" href="https://kayiik.github.io/facet/">'));
   assert.ok(html.includes('<meta property="og:image" content="https://kayiik.github.io/facet/og-default.png">'));
   assert.ok(html.includes('<meta property="og:image:type" content="image/png">'));

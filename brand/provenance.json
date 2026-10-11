@@ -85,9 +85,8 @@
     }
   },
   "siteProjections": {
-    "docs/favicon.svg": "icons/favicon.svg",
-    "docs/logo-mark.svg": "logos/mark.svg",
-    "docs/og-default.svg": "og/og-default.svg",
-    "docs/og-default.png": "og/og-default.png"
+    "site/favicon.svg": "icons/favicon.svg",
+    "site/logo-mark.svg": "logos/mark.svg",
+    "site/og-default.png": "og/og-default.png"
   }
 }

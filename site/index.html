@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Facet: a video studio for the agent you already use</title>
+<meta name="description" content="Facet gives Claude Code, Codex, GitHub Copilot CLI, OpenCode and Compa a video studio's way of working: the brief, research, concepts, the story and a plan for every scene, then narration, composition, captions, mixing and review.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f8fafc">
+<link rel="canonical" href="https://kayiik.github.io/facet/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kayiik.github.io/facet/">
+<meta property="og:title" content="Facet: a video studio for the agent you already use">
+<meta property="og:description" content="The brief, research, concepts, the story and a plan for every scene, then narration, composition, captions, mixing and review, in the agent you already use.">
+<meta property="og:image" content="https://kayiik.github.io/facet/og-default.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Facet mark and wordmark: a video studio for the agent you already use.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Facet: a video studio for the agent you already use">
+<meta name="twitter:description" content="The brief, research, concepts, the story and a plan for every scene, then narration, composition, captions, mixing and review, in the agent you already use.">
+<meta name="twitter:image" content="https://kayiik.github.io/facet/og-default.png">
+<meta name="twitter:image:alt" content="The Facet mark and wordmark: a video studio for the agent you already use.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="site-header">
+<nav class="nav" aria-label="Main">
+<a class="brand" href="./"><img src="logo-mark.svg" alt="" width="38" height="38"><span class="wordmark">facet<span class="period" aria-hidden="true">.</span></span></a>
+<a class="release" href="https://github.com/kayiik/facet/releases/tag/@TAG@">@TAG@</a>
+<ul class="nav-links">
+<li><a href="#parts">What it is</a></li>
+<li><a href="#studio">How it works</a></li>
+<li><a href="#install">Install</a></li>
+<li><a href="#trust">Privacy and money</a></li>
+<li><a href="https://github.com/kayiik/facet">GitHub</a></li>
+</ul>
+</nav>
+</header>
+
+<main id="content">
+<section class="hero" aria-labelledby="hero-title">
+<div class="hero-copy">
+<h1 id="hero-title">A video studio for the agent you already use.</h1>
+<p class="lead">Facet gives Claude Code, Codex, GitHub Copilot CLI, OpenCode and Compa a studio's way of working. Your agent understands the brief, researches, proposes concepts, writes and tests the story and plans every scene before it makes anything. Then it narrates, composes in Remotion, HyperFrames or FFmpeg, captions, mixes and reviews the result.</p>
+<div class="actions">
+<a class="button" href="#install">Install Facet @VERSION@</a>
+<a class="button secondary" href="https://github.com/kayiik/facet">Source on GitHub</a>
+</div>
+<p class="fine">Free and open source, for Windows, macOS and Linux on x64 and Arm64. Facet never calls a model: your agent does.</p>
+</div>
+<figure class="example">
+<div class="sheet">
+<blockquote><p>“Make a 45-second animated explainer about why the sky is blue.”</p></blockquote>
+<ol class="records" aria-label="What the agent writes, in order">
+<li><code>brief.json</code><span>What you want, in a studio's terms</span></li>
+<li><code>research_brief.json</code><span>Sources, numbers and angles</span></li>
+<li><code>proposal_packet.json</code><span>Concepts to choose from</span></li>
+<li><code>script.json</code><span>The story, reviewed by a critic</span></li>
+<li><code>scene_plan.json</code><span>Every scene, before anything is made</span></li>
+<li><code>renders/final.mp4</code><span>Narrated, composed and reviewed</span></li>
+</ol>
+<figcaption>It stops for your approval at the concepts, the story, the scene plan, the first samples and the delivery.</figcaption>
+</div>
+</figure>
+</section>
+
+<section id="parts" class="band" aria-labelledby="parts-title">
+<h2 id="parts-title">One studio, three ways in.</h2>
+<div class="parts">
+<article>
+<h3>The <code>facet</code> command</h3>
+<p>35 tools that probe, edit, narrate, compose, caption, generate and review video; 12 production pipelines with their stage guides; and an MCP server that offers them to your agent. People and scripts run the same tools directly.</p>
+</article>
+<article>
+<h3>Facet in your agent</h3>
+<p><code>facet wire</code> adds Facet's guide and MCP server to Claude Code, Codex, GitHub Copilot CLI, OpenCode or Compa, its agents where the CLI has them, and an ask before each tool that may charge. Claude Code, Codex and Copilot CLI can also add Facet from its plugin marketplace.</p>
+</article>
+<article>
+<h3>The Facet App</h3>
+<p>Facet in its own window, a page in your browser, for people who don't work in a terminal agent. It runs its own agent with a model you connect, keeps your projects and their media, and asks in the window before any tool that may charge.</p>
+</article>
+</div>
+</section>
+
+<section id="studio" aria-labelledby="studio-title">
+<div class="section-intro">
+<h2 id="studio-title">Thinking first, then making.</h2>
+<p>Every video goes through a pipeline chosen by how it is made: an animated explainer, a kinetic animation, a cinematic piece, a documentary montage from stock, an edit of your own footage. Your agent is the producer; separate agents research and review. Each step writes a record you can read and change.</p>
+</div>
+<ol class="steps">
+<li><h3>Brief</h3><p>The job, the audience, the length and what you will spend.</p></li>
+<li><h3>Research</h3><p>Sources, data and real questions, gathered by a researcher agent.</p></li>
+<li><h3>Concepts</h3><p>Genuinely different directions, each grounded in the research and buildable with what you have.</p><span class="approval">You choose</span></li>
+<li><h3>Story</h3><p>The script, checked against the length and the hook, and reviewed by a critic agent.</p><span class="approval">You approve</span></li>
+<li><h3>Scene plan</h3><p>Every scene and how it moves, checked for gaps, variety and slideshow risk.</p><span class="approval">You approve</span></li>
+<li><h3>Production</h3><p>Narration, media, music, the edit and the render, sampled before any batch.</p><span class="approval">You approve the samples</span></li>
+<li><h3>Review and delivery</h3><p>The critic and <code>output_review</code> check the video against what was promised, and every source and paid call is listed.</p><span class="approval">You accept</span></li>
+</ol>
+</section>
+
+<section id="install" class="band" aria-labelledby="install-title">
+<div class="section-intro">
+<h2 id="install-title">One command, for your account only.</h2>
+<p>No administrator rights. The installer checks every file against the release's SHA-256 checksums, then asks which components to install.</p>
+</div>
+<div class="entrances">
+<div class="entrance primary">
+<h3>The App, with the <code>facet</code> command</h3>
+<p class="os">Windows, in PowerShell</p>
+<pre><code>irm https://kayiik.github.io/<wbr>facet/<wbr>install.ps1 | iex</code></pre>
+<p class="os">macOS and Linux</p>
+<pre><code>curl <span class="opt">-fsSL</span> https://kayiik.github.io/<wbr>facet/<wbr>install.sh | sh</code></pre>
+<p class="after">The App starts and opens in your browser. Later, start it from the Start menu, your Applications folder or your application menu.</p>
+</div>
+<div class="entrance">
+<h3>Facet for your agent</h3>
+<p class="os">Windows, in PowerShell</p>
+<pre><code>&amp; ([scriptblock]::Create((irm https://kayiik.github.io/<wbr>facet/<wbr>install.ps1))) <span class="opt">-Mode</span> bundle <span class="opt">-Harness</span> claude,opencode</code></pre>
+<p class="os">macOS and Linux</p>
+<pre><code>curl <span class="opt">-fsSL</span> https://kayiik.github.io/<wbr>facet/<wbr>install.sh | sh <span class="opt">-s</span> <span class="opt">--</span> <span class="opt">--mode</span> bundle <span class="opt">--harness</span> claude,opencode</code></pre>
+<p class="after">Name your CLIs: <code>claude</code>, <code>codex</code>, <code>copilot</code>, <code>opencode</code> or <code>compa</code>. Then start a new session, choose the <code>facet</code> agent where your CLI has one, and ask for a video.</p>
+</div>
+</div>
+<p class="install-note">On macOS and Linux, <code>facet</code> is linked into <code>~/.local/bin</code>, which must be on your PATH. Run the installer again to upgrade, verify or remove Facet. Its programs are not code-signed, so Windows may warn that the publisher is unknown: the checksums show that the files are intact, not who published them. <a href="https://github.com/kayiik/facet#install">Every option</a></p>
+</section>
+
+<section id="components" aria-labelledby="components-title">
+<div class="section-intro">
+<h2 id="components-title">The programs it runs on, installed beside it.</h2>
+<p>Each one is pinned and checked against its SHA-256 before it is unpacked. A supported copy already on your computer is used instead.</p>
+</div>
+<div class="table-wrap">
+<table class="components">
+<thead><tr><th scope="col">Component</th><th scope="col">What it enables</th><th scope="col">Size</th></tr></thead>
+<tbody>
+<tr><th scope="row">FFmpeg</th><td>Every edit, probe, mix and render</td><td>120 MB</td></tr>
+<tr><th scope="row">Node.js</th><td>Runs the Remotion and HyperFrames renderers</td><td>100 MB</td></tr>
+<tr><th scope="row">Browser</th><td>Draws Remotion and HyperFrames frames (Chrome headless shell)</td><td>300 MB</td></tr>
+<tr><th scope="row">Remotion</th><td>Animated explainers, captions, charts and titles</td><td>250 MB</td></tr>
+<tr><th scope="row">HyperFrames</th><td>HTML and GSAP motion graphics</td><td>300 MB</td></tr>
+<tr class="optional"><th scope="row">Piper <span>optional</span></th><td>Offline narration with an English voice; needs Python 3.9 or newer</td><td>125 MB</td></tr>
+</tbody>
+</table>
+</div>
+<div class="commands">
+<p>The first five are installed by default. <code>facet components</code> shows what is installed, on this computer or missing; change it at any time:</p>
+<pre><code>facet components
+facet install piper
+facet remove hyperframes</code></pre>
+</div>
+</section>
+
+<section id="trust" class="band split" aria-labelledby="trust-title">
+<div>
+<h2 id="trust-title">Your work stays yours. Spending is your call.</h2>
+<p>Facet runs on your computer and calls no model. Your agent, and the model it uses, stay exactly as they are.</p>
+</div>
+<ul class="facts">
+<li>Facet sends no telemetry. It goes online only for what you ask of it: the free Edge voices, stock media searches, the components it installs, and paid providers when you agree.</li>
+<li>Eight tools may charge, through OpenAI, ElevenLabs, fal.ai and Google Flow. Your agent announces each paid call and whose credits it uses, and your CLI asks you before it runs.</li>
+<li>A complete free path always exists: an Edge or Piper voice, stock media, Remotion scenes and your own music.</li>
+<li>Provider keys stay in your environment. Facet reads a key only to call its provider.</li>
+<li>The App listens only on 127.0.0.1, and answers only the window it opened, with a key it makes at each start.</li>
+</ul>
+</section>
+</main>
+
+<footer class="site-footer">
+<a class="brand small" href="./"><img src="logo-mark.svg" alt="" width="26" height="26"><span class="wordmark">facet<span class="period" aria-hidden="true">.</span></span></a>
+<ul class="footer-links">
+<li><a href="https://github.com/kayiik/facet">Source</a></li>
+<li><a href="https://github.com/kayiik/facet/releases/tag/@TAG@">Release @TAG@</a></li>
+<li><a href="SHA256SUMS">SHA256SUMS</a></li>
+<li><a href="https://github.com/kayiik/facet/blob/main/LICENSE">AGPL-3.0-or-later</a></li>
+<li><a href="https://github.com/kayiik/facet/blob/main/THIRD_PARTY_NOTICES.md">Notices</a></li>
+</ul>
+</footer>
+</body>
+</html>

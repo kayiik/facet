@@ -115,6 +115,8 @@ jobs:
         run: python -m unittest discover -s scripts -p test_generate_notices.py -v
       - name: Release contract tests
         run: python -m unittest discover -s scripts -p test_release_contract.py -v
+      - name: Website staging tests
+        run: python -m unittest discover -s scripts -p test_stage_site.py -v
       - name: npm content and version checks (not binary distribution)
         run: node scripts/release-package-smoke.mjs
 
