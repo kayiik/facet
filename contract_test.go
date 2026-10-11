@@ -447,7 +447,46 @@ func TestComposerSourceMatchesAllowlist(t *testing.T) {
 	}
 }
 
-func TestLocalUATDrivesTheInstalledCLIJourney(t *testing.T) {
+// The end-to-end test installs the release with its own installer on a
+// machine that has none of facet's components, so every one is facet's own
+// download, and runs the journey with no network. It never builds or lays out
+// facet by hand.
+func TestUATInstallsTheReleaseOnACleanMachine(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("scripts", "uat.Dockerfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lines []string
+	for _, line := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
+			lines = append(lines, line)
+		}
+	}
+	instructions := strings.Join(lines, "\n")
+	for _, required := range []string{
+		"FROM ubuntu:24.04",
+		"sh /release/install.sh --mode bundle --harness opencode --components defaults --distribution-dir /release",
+		"/home/facet/.local/lib/facet/dependencies/node/bin/node",
+	} {
+		if !strings.Contains(instructions, required) {
+			t.Errorf("scripts/uat.Dockerfile does not contain %q", required)
+		}
+	}
+	for _, forbidden := range []string{"ffmpeg", "nodejs", "npm ", "chromium", "google-chrome", "go build", "ln -s", ".facet/current"} {
+		if strings.Contains(strings.ToLower(instructions), forbidden) {
+			t.Errorf("scripts/uat.Dockerfile installs or lays out %q itself", forbidden)
+		}
+	}
+	runner, err := os.ReadFile(filepath.Join("scripts", "uat.py"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(runner), `"--network", "none"`) {
+		t.Error("scripts/uat.py does not run the journey without a network")
+	}
+}
+
+func TestUATJourneyDrivesTheInstalledFacet(t *testing.T) {
 	data, err := os.ReadFile("scripts/uat-journey.mjs")
 	if err != nil {
 		t.Fatal(err)
@@ -456,6 +495,7 @@ func TestLocalUATDrivesTheInstalledCLIJourney(t *testing.T) {
 		"['wire', 'opencode', '--scope', 'user']",
 		"'video_compose'",
 		"'output_review'",
+		"opencode('mcp', 'list')",
 	} {
 		if !strings.Contains(string(data), required) {
 			t.Errorf("UAT journey does not exercise %s", required)
