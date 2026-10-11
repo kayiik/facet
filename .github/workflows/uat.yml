@@ -1,0 +1,64 @@
+name: UAT
+
+# The end-to-end test of an installed facet (scripts/uat.py): this commit's
+# linux/amd64 release, installed by its own install.sh into a clean Ubuntu
+# container, wired into OpenCode, with the default components; then, with no
+# network, OpenCode loads the wiring and facet renders and reviews a video.
+# Runs on pull requests that change what it exercises, and by hand;
+# release.yml runs it on the release's own files before drafting.
+on:
+  pull_request:
+    branches: [staging, main]
+    paths:
+      - 'capability.go'
+      - 'cmd/facet/**'
+      - 'internal/**'
+      - '!internal/app/**'
+      - 'skills/**'
+      - 'agents/**'
+      - 'remotion-composer/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'install.sh'
+      - 'scripts/build-release.py'
+      - 'scripts/release_contract.py'
+      - 'scripts/verify-release.py'
+      - 'scripts/uat*'
+      - 'scripts/probe-artifact.*'
+      - '.github/workflows/uat.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  uat:
+    name: Install, wire and render in a clean Ubuntu
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build the linux/amd64 release
+        run: python scripts/build-release.py --out "$RUNNER_TEMP/release" --targets linux/amd64
+      - name: Install, wire, render and review in a clean Ubuntu
+        run: python scripts/uat.py --release "$RUNNER_TEMP/release" --evidence "$RUNNER_TEMP/uat"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uat-evidence
+          path: ${{ runner.temp }}/uat
+          if-no-files-found: warn
+          retention-days: 7

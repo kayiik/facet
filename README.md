@@ -11,7 +11,7 @@ Facet never calls a model.
 | Part | What it is |
 |---|---|
 | **The `facet` command** | 35 media tools that probe, edit, narrate, compose, caption, generate and review video; 12 production pipelines with their stage guides; and an MCP server, `facet mcp`. |
-| **The bundle** | What `facet wire` puts in your agent's CLI: the `facet` skill (the guide), the `facet` producer agent where the CLI has selectable agents (Copilot CLI, OpenCode), the role agents (researcher, critic, reference analyst), the MCP server, and a rule to ask before each of the 8 tools that may charge. |
+| **The bundle** | What `facet wire` puts in your agent's CLI: the `facet` skill (the guide) and the MCP server, everywhere; the role agents (researcher, critic, reference analyst) in Claude Code, Copilot CLI and OpenCode, with the `facet` producer agent you can select in Copilot CLI and OpenCode; and an ask before each of the 8 tools that may charge. |
 | **The App** | Facet in its own window, a page in your browser, for people who don't work in a terminal agent. It runs a private [Compa](https://github.com/kayiik/compa) kernel with Facet wired in, and tools that may charge always ask in the window first. |
 
 ## Install
@@ -154,9 +154,18 @@ python scripts/verify-release.py --directory "$HOME/facet-release" --smoke
 sh install.sh --mode core --distribution-dir "$HOME/facet-release"
 ```
 
+The end-to-end test installs such a release with its own `install.sh` into a
+clean Ubuntu container, wired into OpenCode with the default components, and
+then, with no network, has OpenCode load the wiring and `facet` render and
+review a video. It needs Docker and a linux build for Docker's architecture:
+
+```sh
+python scripts/uat.py --release "$HOME/facet-release"
+```
+
 The Release workflow builds every target from a `vX.Y.Z` tag on `main`,
-installs the result on each platform, attests its build provenance and
-drafts the GitHub release.
+installs the result on each platform, runs the end-to-end test, attests its
+build provenance and drafts the GitHub release.
 
 ## License
 

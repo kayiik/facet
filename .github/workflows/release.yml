@@ -2,11 +2,12 @@ name: Release
 
 # A tag vX.Y.Z on main builds both products, core and app, for every
 # platform; verifies the release; installs, verifies and uninstalls it on each
-# platform with the release's own installers; attests the build provenance of
-# every file; and stages them all on a draft release, which the operator
-# publishes. Run by hand (workflow_dispatch), it is a dry run of the same
-# build and checks: nothing is attested or released, and the files stay a
-# workflow artifact for seven days.
+# platform with the release's own installers; runs the end-to-end test
+# (scripts/uat.py) on it; attests the build provenance of every file; and
+# stages them all on a draft release, which the operator publishes. Run by
+# hand (workflow_dispatch), it is a dry run of the same build and checks:
+# nothing is attested or released, and the files stay a workflow artifact for
+# seven days.
 on:
   push:
     tags: ['v*']
@@ -107,10 +108,40 @@ jobs:
         if: runner.os != 'Windows'
         run: sh scripts/smoke-installer.sh --installer "$RUNNER_TEMP/release/install.sh" "$RUNNER_TEMP/release"
 
+  # The end-to-end test (scripts/uat.py) on the release's own linux/amd64
+  # files: installed into a clean Ubuntu container, wired into OpenCode, with
+  # the default components; then, with no network, OpenCode loads the wiring
+  # and facet renders and reviews a video. No release without a real render.
+  uat:
+    name: Install, wire and render in a clean Ubuntu
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: ${{ runner.temp }}/release
+      - name: Install, wire, render and review in a clean Ubuntu
+        run: python scripts/uat.py --release "$RUNNER_TEMP/release" --evidence "$RUNNER_TEMP/uat"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uat-evidence
+          path: ${{ runner.temp }}/uat
+          if-no-files-found: warn
+          retention-days: 7
+
   draft:
     name: Draft the release
     if: github.event_name == 'push'
-    needs: [build, smoke]
+    needs: [build, smoke, uat]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

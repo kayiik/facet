@@ -61,8 +61,8 @@ test('JSONC parsing removes comments and trailing commas but never string conten
 test('facet MCP entries are recognized by executable name and mcp subcommand only', () => {
   const config = {
     mcp: {
-      facet: { type: 'local', command: ['/home/facet/.facet/current/bin/facet', 'mcp'] },
-      windows: { type: 'local', command: ['C:\\Users\\Test User\\.facet\\current\\bin\\facet.exe', 'mcp', '--root', 'C:\\work'] },
+      facet: { type: 'local', command: ['/home/facet/.local/lib/facet/bin/facet', 'mcp'] },
+      windows: { type: 'local', command: ['C:\\Users\\Test User\\AppData\\Local\\Programs\\Facet\\bin\\facet.exe', 'mcp', '--root', 'C:\\work'] },
       bare: { type: 'local', command: ['facet', 'mcp'] },
       other: { type: 'local', command: ['npx', '-y', 'facet', 'mcp'] },
       lookalike: { type: 'local', command: ['/usr/bin/facet-mcp', 'mcp'] },

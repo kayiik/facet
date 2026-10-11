@@ -5,20 +5,26 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { atomicJSON } from './uat-checkpoint.mjs';
 import { inspectMedia, decodedMedia } from './uat-media.mjs';
 import { sanitizer } from './uat-sanitize.mjs';
 import { facetMcpServers, mcpListTools, opencodeUserConfigFiles, parseJsonc } from './uat-wiring.mjs';
 
-// The Facet 2.0 CLI journey. Runs INSIDE the UAT container as the unprivileged
-// user, after the image build installed the release archive with the product
-// installer. Every check drives the installed `facet` the way a user or an
-// agentic CLI would; nothing here fabricates media, envelopes or wiring.
+// The end-to-end journey of an installed facet. It runs INSIDE the container
+// that scripts/uat.py builds from scripts/uat.Dockerfile, as that machine's one
+// person, with no network, after the release's own install.sh installed facet
+// in bundle mode, wired into OpenCode, with the default components. Every
+// check drives the installed facet the way a person or OpenCode would; nothing
+// here fabricates media, envelopes or wiring.
+
+// The only files the journey writes to its evidence folder.
 export const evidenceFiles = [
-  'progress.json', 'checks.json', 'install-build.log', 'wire.log', 'opencode-config.json', 'mcp-tools.json',
-  'doctor.log', 'render-props.json', 'render.log', 'final.mp4', 'review-input.json', 'review.log',
-  'review-negative.log', 'broken-runtime.log',
+  'progress.json', 'checks.json', 'install.log', 'verify.log', 'components.json', 'browser-libraries.log',
+  'wire.log', 'opencode-config.json', 'mcp-tools.json', 'opencode.log', 'doctor.log', 'render-props.json',
+  'render.log', 'final.mp4', 'review-input.json', 'review.log', 'review-negative.log', 'broken-runtime.log',
 ];
+
+// The components install.sh --components defaults installs.
+export const defaultComponents = ['ffmpeg', 'node', 'browser', 'remotion', 'hyperframes'];
 
 export const reviewRequest = {
   input: 'renders/final.mp4',
@@ -39,22 +45,34 @@ export const renderRequest = {
   fps: 30,
   cuts: [
     { id: 'title', type: 'hero_title', text: 'Facet CLI journey', subtitle: 'Deterministic local render', in_seconds: 0, out_seconds: 1 },
-    { id: 'stat', type: 'stat_card', stat: '2 s', label: 'installed runtime, no model', backgroundColor: '#1d4ed8', in_seconds: 1, out_seconds: 2 },
+    { id: 'stat', type: 'stat_card', stat: '2 s', label: 'installed facet, no model', backgroundColor: '#1d4ed8', in_seconds: 1, out_seconds: 2 },
   ],
   audio_path: 'narration/tone.wav',
   output: 'renders/final.mp4',
   timeout_seconds: 300,
 };
 
+// Writes JSON through a temporary file, so a reader never sees half of it.
+export function atomicJSON(file, value, redact = text => text) {
+  const temporary = `${file}.writing`;
+  fs.writeFileSync(temporary, redact(JSON.stringify(value, null, 2)), { mode: 0o600 });
+  fs.renameSync(temporary, file);
+}
+
 const sha256 = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
-export async function journey(evidence, { home = os.homedir(), version = process.env.FACET_UAT_VERSION } = {}) {
+// release is the folder install.sh installed from; its build-manifest.json
+// names the version.
+export async function journey(evidence, { home = os.homedir(), release = '/release' } = {}) {
   fs.mkdirSync(evidence, { recursive: true });
   const { redact } = sanitizer();
   const started = Date.now();
-  const goarch = { x64: 'amd64', arm64: 'arm64' }[process.arch];
-  const current = path.join(home, '.facet', 'current');
-  const facet = path.join(current, 'bin', 'facet');
+  // Where install.sh installs facet for this person, and its link on PATH.
+  const root = path.join(home, '.local', 'lib', 'facet');
+  const facet = path.join(root, 'bin', 'facet');
+  const link = path.join(home, '.local', 'bin', 'facet');
+  let version = null;
+  try { version = JSON.parse(fs.readFileSync(path.join(release, 'build-manifest.json'), 'utf8')).version; } catch { /* The layout check fails. */ }
   const report = { track: 'cli-journey', version, real_agent_acceptance: false, checks: [] };
   const state = {};
   const save = (name, text) => fs.writeFileSync(path.join(evidence, name), redact(text));
@@ -62,18 +80,25 @@ export async function journey(evidence, { home = os.homedir(), version = process
     status: 'running', final: false, adjudication: false, phase, elapsed_ms: Date.now() - started,
     updated_at: new Date().toISOString(), checks: report.checks.map(({ name, passed }) => ({ name, passed })),
   });
+  // Every program sees this home and nothing of another: OpenCode reads its
+  // configuration from the XDG folders.
+  const homeEnv = () => ({
+    ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), XDG_DATA_HOME: path.join(home, '.local', 'share'),
+    XDG_STATE_HOME: path.join(home, '.local', 'state'), XDG_CACHE_HOME: path.join(home, '.cache'),
+  });
   // No shell; every argument is fixed by this script.
-  const run = (command, args, { cwd = home, timeout = 120000, allowFailure = false, env = process.env } = {}) => {
+  const run = (command, args, { cwd = home, timeout = 120000, allowFailure = false, env = homeEnv() } = {}) => {
     const result = spawnSync(command, args, { cwd, env, encoding: 'utf8', timeout, maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
     if (result.error) throw new Error(`${command} could not run: ${result.error.message}`);
     if (!allowFailure && result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited ${result.status ?? result.signal}: ${(result.stderr || result.stdout).trim().slice(-2000)}`);
     return result;
   };
-  const tool = (args, options) => {
-    const result = run(facet, args, { ...options, allowFailure: true });
+  const transcript = (label, result) => `$ ${label}\n${result.stdout}${result.stderr ? `\n--- stderr ---\n${result.stderr}` : ''}`;
+  const tool = (args, { command = facet, ...options } = {}) => {
+    const result = run(command, args, { ...options, allowFailure: true });
     let envelope = null;
     try { envelope = JSON.parse(result.stdout); } catch { /* Asserted by the caller. */ }
-    return { ...result, envelope, log: `$ facet ${args.join(' ')}\n${result.stdout}${result.stderr ? `\n--- stderr ---\n${result.stderr}` : ''}` };
+    return { ...result, envelope, log: transcript(`${command === link ? '~/.local/bin/facet' : 'facet'} ${args.join(' ')}`, result) };
   };
   const check = async (name, fn) => {
     progress(name);
@@ -86,31 +111,57 @@ export async function journey(evidence, { home = os.homedir(), version = process
     }
   };
 
-  await check('installed-runtime-layout', () => {
-    assert.match(version ?? '', /^\d+\.\d+\.\d+/, 'FACET_UAT_VERSION must name the installed release');
-    assert.ok(goarch, `unsupported architecture ${process.arch}`);
-    save('install-build.log', fs.readFileSync(path.join(home, 'uat-install-build.log'), 'utf8'));
-    const runtime = path.join(home, '.facet', 'runtimes', `${version}-linux-${goarch}`);
-    for (const file of [path.join(runtime, 'bin', 'facet'), facet]) assert.ok(fs.statSync(file).isFile(), `${file} is missing`);
-    assert.equal(sha256(facet), sha256(path.join(runtime, 'bin', 'facet')), '~/.facet/current is not the installed release');
+  await check('installed-layout', () => {
+    assert.match(version ?? '', /^\d+\.\d+\.\d+/, `no release version in ${path.join(release, 'build-manifest.json')}`);
+    const target = { x64: 'linux/amd64', arm64: 'linux/arm64' }[process.arch];
+    save('install.log', fs.readFileSync(path.join(home, 'uat-install.log'), 'utf8'));
+    assert.ok(fs.statSync(facet).isFile(), `${facet} is missing`);
+    assert.equal(fs.readlinkSync(link), facet, `${link} does not link to ${facet}`);
     assert.equal(run(facet, ['version']).stdout.trim(), `facet v${version}`);
-    assert.equal(run('sh', ['-c', 'command -v facet']).stdout.trim(), facet, 'facet on PATH must be the active runtime');
-    for (const retired of ['bin', 'bundle']) assert.equal(fs.existsSync(path.join(home, '.facet', retired)), false, `retired ~/.facet/${retired} layout exists`);
-    // --no-path: login and shell profiles are exactly the account skeleton.
-    for (const profile of ['.bashrc', '.profile']) {
-      assert.equal(fs.readFileSync(path.join(home, profile), 'utf8'), fs.readFileSync(path.join('/etc/skel', profile), 'utf8'), `${profile} changed despite --no-path`);
+    assert.equal(run('sh', ['-c', 'command -v facet']).stdout.trim(), link, 'facet on PATH is not the installer\'s link');
+    const receipt = fs.readFileSync(path.join(root, 'install-receipt.tsv'), 'utf8').trim().split('\n').map(line => line.split('\t'));
+    const field = name => receipt.find(row => row[0] === name)?.[1];
+    assert.equal(field('format'), 'facet-install-v1');
+    assert.equal(field('version'), version);
+    assert.equal(field('target'), target);
+    assert.deepEqual(receipt.filter(row => row[0] === 'product').map(row => row[1]), ['core'], 'bundle mode installs facet alone');
+    const verified = run('sh', [path.join(release, 'install.sh'), '--verify'], { allowFailure: true });
+    save('verify.log', transcript('install.sh --verify', verified));
+    assert.equal(verified.status, 0, `install.sh --verify exited ${verified.status}`);
+    for (const retired of [path.join(home, '.facet', 'current'), path.join(home, '.facet', 'runtimes')]) {
+      assert.equal(fs.existsSync(retired), false, `the retired layout ${retired} exists`);
     }
-    for (const profile of ['.bash_profile', '.bash_login', '.zshrc', '.zprofile']) assert.equal(fs.existsSync(path.join(home, profile)), false, `${profile} created despite --no-path`);
-    return { runtime, active_runtime: fs.realpathSync(current), current_is_link: fs.lstatSync(current).isSymbolicLink(), facet_sha256: sha256(facet) };
+    assert.equal(fs.existsSync(path.join(home, '.local', 'share', 'applications', 'facet.desktop')), false, 'bundle mode made an App entry');
+    // install.sh links into ~/.local/bin and edits no shell profile.
+    for (const profile of ['.bashrc', '.profile']) {
+      assert.equal(fs.readFileSync(path.join(home, profile), 'utf8'), fs.readFileSync(path.join('/etc/skel', profile), 'utf8'), `${profile} changed`);
+    }
+    for (const profile of ['.bash_profile', '.bash_login', '.zshrc', '.zprofile']) assert.equal(fs.existsSync(path.join(home, profile)), false, `${profile} was created`);
+    return { version, target, root, facet_sha256: sha256(facet) };
   });
 
-  await check('toolchain', () => {
-    const versions = {};
-    for (const [command, args] of [['opencode', ['--version']], ['node', ['--version']], ['ffmpeg', ['-version']], ['ffprobe', ['-version']], ['chromium', ['--version']]]) {
-      versions[command] = run(command, args).stdout.split('\n')[0].trim();
+  await check('components', () => {
+    const listed = tool(['components', '--json']);
+    save('components.json', listed.stdout);
+    assert.equal(listed.status, 0, `facet components exited ${listed.status ?? listed.signal}`);
+    const components = Object.fromEntries((listed.envelope?.result?.components ?? []).map(component => [component.id, component]));
+    const dependencies = path.join(root, 'dependencies') + path.sep;
+    for (const id of defaultComponents) {
+      const component = components[id];
+      assert.equal(component?.state, 'installed', `${id} is ${component?.state ?? 'not reported'}: ${component?.detail ?? ''}`);
+      assert.ok(component.path.startsWith(dependencies), `${id} runs from ${component.path}, not from facet's dependencies`);
     }
-    assert.match(versions.opencode, /1\.18\.29/);
-    return versions;
+    // The machine had none of them, so every copy is one facet downloaded.
+    const elsewhere = run('sh', ['-c', 'for p in node npm ffmpeg ffprobe chromium chromium-browser google-chrome; do command -v "$p"; done'], { allowFailure: true }).stdout.trim();
+    assert.equal(elsewhere, '', `programs outside facet: ${elsewhere}`);
+    // Every shared library the headless browser loads is on this machine.
+    const ldd = run('ldd', [components.browser.path], { allowFailure: true });
+    save('browser-libraries.log', transcript(`ldd ${components.browser.path}`, ldd));
+    const missing = ldd.stdout.split('\n').filter(line => line.includes('not found')).map(line => line.trim().split(/\s/)[0]);
+    assert.deepEqual(missing, [], `the browser needs libraries this machine lacks: ${missing.join(', ')}`);
+    // The journey's own media checks run on facet's FFmpeg and Node.
+    process.env.PATH = [path.dirname(components.ffmpeg.path), path.dirname(components.node.path), process.env.PATH].join(path.delimiter);
+    return Object.fromEntries(defaultComponents.map(id => [id, components[id].found || components[id].version]));
   });
 
   await check('sanitizer-negative-control', () => {
@@ -146,40 +197,74 @@ export async function journey(evidence, { home = os.homedir(), version = process
   });
 
   await check('wire-opencode-user-scope', async () => {
+    // bundle mode wired OpenCode during the installation. Wiring again, once
+    // through the link on PATH, changes nothing.
+    const recorded = () => JSON.parse(fs.readFileSync(path.join(home, '.facet', 'wiring.json'), 'utf8')).wirings
+      ?.find(wiring => wiring.cli === 'opencode' && wiring.scope === 'user');
+    assert.ok(recorded(), 'the installer did not wire OpenCode');
     const scratch = fs.mkdtempSync(path.join(home, 'uat-wire-cwd-'));
-    const wired = [tool(['wire', 'opencode', '--scope', 'user'], { cwd: scratch }), tool(['wire', 'opencode', '--scope', 'user'], { cwd: scratch })];
+    const args = ['wire', 'opencode', '--scope', 'user'];
+    const wired = [tool(args, { cwd: scratch }), tool(args, { cwd: scratch, command: link })];
     save('wire.log', wired.map(result => result.log).join('\n\n'));
     for (const result of wired) assert.equal(result.status, 0, `facet wire exited ${result.status ?? result.signal}`);
     assert.deepEqual(fs.readdirSync(scratch), [], 'user-scope wiring wrote into the working directory');
-    const files = opencodeUserConfigFiles(home);
-    assert.ok(files.length > 0, 'no OpenCode user configuration was written');
-    const servers = files.flatMap(file => facetMcpServers(parseJsonc(fs.readFileSync(file, 'utf8'))).map(entry => ({ file, ...entry })));
-    assert.equal(servers.length, 1, `expected exactly one facet MCP server after wiring twice, found ${servers.length}`);
+    // The guide, the producer agent and the role agents, as recorded.
+    const record = recorded();
+    for (const file of record.files) assert.ok(fs.existsSync(file.path), `${file.path} is missing`);
+    const files = record.files.map(file => path.relative(record.root, file.path).split(path.sep).join('/')).sort();
+    for (const wanted of ['skills/facet/SKILL.md', 'agents/facet.md', 'agents/facet-critic.md', 'agents/facet-researcher.md', 'agents/facet-reference-analyst.md']) {
+      assert.ok(files.includes(wanted), `the wiring lacks ${wanted}`);
+    }
+    const servers = opencodeUserConfigFiles(home, homeEnv()).flatMap(file => facetMcpServers(parseJsonc(fs.readFileSync(file, 'utf8'))).map(entry => ({ file, ...entry })));
+    assert.equal(servers.length, 1, `expected exactly one facet MCP server after wiring three times, found ${servers.length}`);
     const [{ file, name, server }] = servers;
     save('opencode-config.json', fs.readFileSync(file, 'utf8'));
     assert.equal(server.type, 'local', 'facet must be wired as a local (stdio) MCP server');
     assert.notEqual(server.enabled, false, 'the wired facet MCP server is disabled');
-    const executable = path.isAbsolute(server.command[0]) ? server.command[0] : run('sh', ['-c', 'command -v "$1"', 'sh', server.command[0]]).stdout.trim();
-    assert.equal(sha256(executable), sha256(facet), 'the wired executable is not the installed facet');
+    // facet wire registers the facet it runs, its link resolved: the one in
+    // the programs folder, which an upgrade replaces in place.
+    assert.equal(server.command[0], facet, 'OpenCode would run another facet than the installed one');
     // Speak MCP to exactly the command OpenCode will start.
-    const listed = await mcpListTools(executable, server.command.slice(1), { cwd: scratch, env: { ...process.env, ...(server.environment ?? {}) }, timeoutMs: 60000 });
+    const listed = await mcpListTools(server.command[0], server.command.slice(1), { cwd: scratch, env: { ...homeEnv(), ...(server.environment ?? {}) }, timeoutMs: 60000 });
     fs.writeFileSync(path.join(evidence, 'mcp-tools.json'), JSON.stringify(listed, null, 2));
     for (const wanted of ['video_compose', 'output_review']) {
-      assert.ok(listed.tools.some(name => name === wanted || String(name).endsWith(`_${wanted}`)), `facet mcp does not offer ${wanted}`);
+      assert.ok(listed.tools.some(tool => tool === wanted || String(tool).endsWith(`_${wanted}`)), `facet mcp does not offer ${wanted}`);
     }
-    // Recorded, not asserted: a command under ~/.facet/runtimes/<version> would
-    // break when an update retires that runtime; ~/.facet/current would not.
-    const versioned = path.resolve(executable).startsWith(path.join(home, '.facet', 'runtimes') + path.sep);
-    return { config: file, server: name, command: server.command, wired_executable: executable, survives_runtime_updates: !versioned, server_info: listed.serverInfo, protocol_version: listed.protocolVersion, tools: listed.tools.length };
+    state.wired = true;
+    return { config: file, server: name, command: server.command, files, server_info: listed.serverInfo, protocol_version: listed.protocolVersion, tools: listed.tools.length };
+  });
+
+  await check('opencode-loads-facet', () => {
+    assert.ok(state.wired, 'facet is not wired into OpenCode');
+    // OpenCode itself, offline: it must accept what facet wire wrote, load the
+    // facet agent and skill, and start the facet MCP server.
+    const project = fs.mkdtempSync(path.join(home, 'uat-opencode-'));
+    const opencode = (...args) => {
+      const result = run('opencode', args, { cwd: project, timeout: 90000, allowFailure: true });
+      return { ...result, text: `${result.stdout}\n${result.stderr}`, log: transcript(`opencode ${args.join(' ')}`, result) };
+    };
+    const results = {
+      '--version': opencode('--version'), 'debug config': opencode('debug', 'config'), 'debug agent facet': opencode('debug', 'agent', 'facet'),
+      'debug skill': opencode('debug', 'skill'), 'mcp list': opencode('mcp', 'list'),
+    };
+    save('opencode.log', Object.values(results).map(result => result.log).join('\n\n'));
+    for (const [what, result] of Object.entries(results)) assert.equal(result.status, 0, `opencode ${what} exited ${result.status ?? result.signal}`);
+    assert.match(results['debug config'].text, /"facet"/, 'OpenCode\'s resolved configuration has no facet server');
+    assert.match(results['debug agent facet'].text, /primary/, 'OpenCode does not load facet as a primary agent');
+    assert.match(results['debug skill'].text, /\bfacet\b/, 'OpenCode does not list the facet skill');
+    assert.match(results['mcp list'].text, /facet[^\n]*connected/i, 'OpenCode does not connect to the facet MCP server');
+    return { opencode: results['--version'].stdout.trim() };
   });
 
   await check('facet-doctor', () => {
     const result = run(facet, ['doctor']);
     save('doctor.log', `${result.stdout}${result.stderr}`);
-    assert.ok(result.stdout.trim(), 'facet doctor printed no report');
+    // The runtime is the programs folder, and the receipt there names this release.
+    const line = result.stdout.split('\n').find(text => /^\s*\S+\s+Runtime\s+:/.test(text))?.trim() ?? '';
+    assert.ok(line.endsWith(`: ${root} (installed: Facet ${version}, core)`), `facet doctor reports ${line || 'no runtime'}`);
     // Recorded for the reader; the render below is the proof the composer works.
-    const remotion = result.stdout.split('\n').find(line => /remotion/i.test(line))?.trim() ?? null;
-    return { exit_code: result.status, remotion };
+    const remotion = result.stdout.split('\n').find(text => /remotion/i.test(text))?.trim() ?? null;
+    return { runtime: line, remotion };
   });
 
   const project = fs.mkdtempSync(path.join(home, 'uat-project-'));
@@ -247,7 +332,7 @@ export async function journey(evidence, { home = os.homedir(), version = process
     fs.writeFileSync(path.join(broken, 'artifacts', 'props.json'), JSON.stringify({ ...renderRequest, audio_path: undefined, output: 'renders/must-not-exist.mp4' }));
     // The one explicit composer override, pointing nowhere: the render must
     // fail rather than fall back to another composer.
-    const env = { ...process.env, FACET_REMOTION_COMPOSER: '/nonexistent-uat-runtime' };
+    const env = { ...homeEnv(), FACET_REMOTION_COMPOSER: '/nonexistent-uat-runtime' };
     const result = tool(['tools', 'run', 'video_compose', '--input', 'artifacts/props.json'], { cwd: broken, timeout: 60000, env });
     save('broken-runtime.log', result.log);
     assert.notEqual(result.status, 0, 'a broken runtime pin must fail');
@@ -264,7 +349,8 @@ export async function journey(evidence, { home = os.homedir(), version = process
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { passed, report } = await journey(path.resolve(process.argv[2] || '/home/facet/uat-evidence/journey'));
-  console.log(JSON.stringify({ track: report.track, passed, checks: report.checks.map(({ name, passed: ok }) => ({ name, passed: ok })) }));
+  const { passed, report } = await journey(path.resolve(process.argv[2] || path.join(os.homedir(), 'uat-evidence')));
+  const checks = report.checks.map(({ name, passed: ok, error }) => (ok ? { name, passed: ok } : { name, passed: ok, error }));
+  console.log(JSON.stringify({ track: report.track, version: report.version, passed, checks }, null, 2));
   if (!passed) process.exitCode = 1;
 }

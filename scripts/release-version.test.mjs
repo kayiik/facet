@@ -30,6 +30,7 @@ test('a release is drafted from a tag on main and never replaces a published one
   assert.match(workflow, /"\$GITHUB_REF_NAME" != "v\$version"/, 'the tag must name package.json\'s version');
   assert.match(workflow, /git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/, 'the tag must be on main');
   assert.match(workflow, /name: Draft the release\s+if: github\.event_name == 'push'/, 'a dry run must not release');
+  assert.match(workflow, /needs: \[build, smoke, uat\]/, 'no draft without the smoke tests and the end-to-end test');
   assert.match(workflow, /-F draft=true/);
   assert.match(workflow, /a published release is never replaced/);
   assert.doesNotMatch(workflow, /--clobber|draft=false|make_latest|gh release edit|branches:/);
