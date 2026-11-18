@@ -143,6 +143,11 @@ are skipped:
 FACET_APP_KERNEL=/path/to/compa-kernel FACET_APP_FACET=/path/to/facet go test ./internal/app/...
 ```
 
+The small [App browser smoke suite](tests/app/README.md) also needs the
+built `facet-app`. It uses the real products with a local scripted model
+and provider, never a real API key. Run it with `npm run test:app`; manual
+CI runs include it on Linux/Chromium. Normal PR/push runs are unchanged.
+
 A release is both products for Windows, macOS and Linux on amd64 and arm64.
 Build and check one from a clean checkout, into an empty folder outside it,
 and install from it (here for Linux on amd64; `--targets` takes any of the
