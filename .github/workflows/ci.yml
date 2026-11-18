@@ -103,6 +103,26 @@ jobs:
         run: go vet ./...
       - name: Build the App
         run: go build -o "${{ runner.temp }}" ./cmd/facet-app
+      # Reuse this job's real binaries and verified kernel. This is a small,
+      # explicitly requested smoke run, not another every-push browser matrix.
+      - name: Install the App smoke browser
+        if: github.event_name == 'workflow_dispatch' && runner.os == 'Linux'
+        run: npx playwright install chromium --with-deps --only-shell
+      - name: App browser smoke (local model and provider only)
+        if: github.event_name == 'workflow_dispatch' && runner.os == 'Linux'
+        env:
+          FACET_APP_BINARY: ${{ runner.temp }}/facet-app
+        run: npm run test:app
+      - name: Keep App browser failure evidence
+        if: failure() && github.event_name == 'workflow_dispatch' && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-browser-failure
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Launcher and UAT unit tests (no Docker, no model calls)
         run: node --test "bin/*.test.js" "scripts/*.test.mjs"
       - name: Composer typecheck and build

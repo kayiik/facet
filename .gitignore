@@ -8,6 +8,8 @@ remotion-composer/node_modules/
 /.opencode/
 # Generated local verification fixtures/cache/evidence, not product source; retain on disk.
 /.quality-run/
+/test-results/
+/playwright-report/
 *.temp
 *.log
 *.tgz
