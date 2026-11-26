@@ -262,8 +262,8 @@ func (c *Compa) supervise(exited chan struct{}) {
 
 func (c *Compa) socketFor(session string) (*socket, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if !c.running {
+		c.mu.Unlock()
 		return nil, kernel.ErrNotRunning
 	}
 	if s := c.sockets[session]; s != nil {
@@ -271,12 +271,32 @@ func (c *Compa) socketFor(session string) (*socket, error) {
 		case <-s.done:
 			delete(c.sockets, session)
 		default:
+			c.mu.Unlock()
 			return s, nil
 		}
 	}
-	s, err := dial(c.port, c.token, session, c.onFrame)
+	port, token := c.port, c.token
+	c.mu.Unlock()
+
+	s, err := dial(port, token, session, c.onFrame)
 	if err != nil {
 		return nil, err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.running {
+		s.close()
+		return nil, kernel.ErrNotRunning
+	}
+	if existing := c.sockets[session]; existing != nil {
+		select {
+		case <-existing.done:
+			delete(c.sockets, session)
+		default:
+			s.close()
+			return existing, nil
+		}
 	}
 	c.sockets[session] = s
 	return s, nil
